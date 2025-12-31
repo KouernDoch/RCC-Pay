@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		293DEF8B2F04B1CA00B5C2D3 /* Rcc_Project.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rcc_Project.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		293DEF8B2F04B1CA00B5C2D3 /* RCC Pay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RCC Pay.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,7 +40,7 @@
 		293DEF8C2F04B1CA00B5C2D3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				293DEF8B2F04B1CA00B5C2D3 /* Rcc_Project.app */,
+				293DEF8B2F04B1CA00B5C2D3 /* RCC Pay.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		293DEF8A2F04B1CA00B5C2D3 /* Rcc_Project */ = {
+		293DEF8A2F04B1CA00B5C2D3 /* RCC Pay */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 293DEF982F04B1CE00B5C2D3 /* Build configuration list for PBXNativeTarget "Rcc_Project" */;
+			buildConfigurationList = 293DEF982F04B1CE00B5C2D3 /* Build configuration list for PBXNativeTarget "RCC Pay" */;
 			buildPhases = (
 				293DEF872F04B1CA00B5C2D3 /* Sources */,
 				293DEF882F04B1CA00B5C2D3 /* Frameworks */,
@@ -63,11 +63,11 @@
 			fileSystemSynchronizedGroups = (
 				293DEF8D2F04B1CA00B5C2D3 /* Rcc_Project */,
 			);
-			name = Rcc_Project;
+			name = "RCC Pay";
 			packageProductDependencies = (
 			);
 			productName = Rcc_Project;
-			productReference = 293DEF8B2F04B1CA00B5C2D3 /* Rcc_Project.app */;
+			productReference = 293DEF8B2F04B1CA00B5C2D3 /* RCC Pay.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 293DEF862F04B1CA00B5C2D3 /* Build configuration list for PBXProject "Rcc_Project" */;
+			buildConfigurationList = 293DEF862F04B1CA00B5C2D3 /* Build configuration list for PBXProject "RCC Pay" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -99,7 +99,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				293DEF8A2F04B1CA00B5C2D3 /* Rcc_Project */,
+				293DEF8A2F04B1CA00B5C2D3 /* RCC Pay */,
 			);
 		};
 /* End PBXProject section */
@@ -256,6 +256,7 @@
 				DEVELOPMENT_TEAM = WWH2BXD4W3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "RCC Pay";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -268,9 +269,13 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "hrd.com.Rcc-Project";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -284,6 +289,7 @@
 				DEVELOPMENT_TEAM = WWH2BXD4W3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "RCC Pay";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -296,16 +302,20 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "hrd.com.Rcc-Project";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		293DEF862F04B1CA00B5C2D3 /* Build configuration list for PBXProject "Rcc_Project" */ = {
+		293DEF862F04B1CA00B5C2D3 /* Build configuration list for PBXProject "RCC Pay" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				293DEF962F04B1CE00B5C2D3 /* Debug */,
@@ -314,7 +324,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		293DEF982F04B1CE00B5C2D3 /* Build configuration list for PBXNativeTarget "Rcc_Project" */ = {
+		293DEF982F04B1CE00B5C2D3 /* Build configuration list for PBXNativeTarget "RCC Pay" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				293DEF992F04B1CE00B5C2D3 /* Debug */,
