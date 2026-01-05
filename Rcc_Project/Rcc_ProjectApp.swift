@@ -28,10 +28,20 @@ struct Rcc_ProjectApp: App {
             UIView.appearance().overrideUserInterfaceStyle = .light
         }
 
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var application
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
 //        .modelContainer(sharedModelContainer)
+    }
+}
+
+class AppDelegate: NSObject,UIApplicationDelegate{
+    static  let lockOrientation = UIInterfaceOrientationMask.portrait
+    
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        return AppDelegate.lockOrientation
     }
 }

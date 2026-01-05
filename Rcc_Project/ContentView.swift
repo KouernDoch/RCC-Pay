@@ -61,25 +61,26 @@ struct ContentView: View {
                 DateSelect { selectedDate in
                     selectedmonth = months[selectedDate - 1]
                 }
-                
-                CardViewMonthlyBill(selectedmonth: $selectedmonth,selectedYear: $selectedYear)
-                    Text("Daily Payment")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal)
-                
-                // card Payment
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 16) {
-                        ForEach(paymentModels) { paymentModel in
-                            CardPayment(name: paymentModel.name, image: paymentModel.image, date: paymentModel.date, amount: paymentModel.amount)
+//                ScrollView(.vertical, showsIndicators: false) {
+                    CardViewMonthlyBill(selectedmonth: $selectedmonth,selectedYear: $selectedYear)
+                        Text("Daily Payment")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal)
+                    
+                    // card Payment
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 16) {
+                            ForEach(paymentModels) { paymentModel in
+                                CardPayment(name: paymentModel.name, image: paymentModel.image, date: paymentModel.date, amount: paymentModel.amount)
+                            }
                         }
                     }
-                }
+                    
+                    
+                    Spacer()
+//                }
                 
-                
-                
-                Spacer()
             }
             .onChange(of: selectedYear) { oldValue, newValue in
                 print("Year:", selectedYear, "Month:", selectedmonth)

@@ -8,9 +8,10 @@
 import SwiftUI
 
 struct ButtonQRCode: View {
+    @State private var isShowingSheet = false
     var body: some View {
         Button(action: {
-            
+            isShowingSheet.toggle()
         }){
             HStack{
                 Image(systemName: "qrcode")
@@ -22,6 +23,9 @@ struct ButtonQRCode: View {
                     }
             .padding(.horizontal)
             .frame(maxWidth: .infinity)
+        }
+        .fullScreenCover(isPresented: $isShowingSheet){
+            PopUpViewQRCode(isShowingSheet: $isShowingSheet)
         }
         .buttonStyle(.borderedProminent)
     }
