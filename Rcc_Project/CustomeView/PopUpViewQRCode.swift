@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreImage.CIFilterBuiltins
+import UIKit
 
 struct PopUpViewQRCode: View {
     @Binding var isShowingSheet: Bool
@@ -56,24 +57,31 @@ struct PopUpViewQRCode: View {
                         }
                         
                         makeBody()
-                        if let shareImage {
-                            let imageAsswiftUIImage = Image(uiImage: shareImage)
-                                ShareLink(item: imageAsswiftUIImage,preview: SharePreview("RCC Pay",image: imageAsswiftUIImage)){
-                                    VStack{
-                                        Circle()
-                                            .frame(width: 40)
-                                            .foregroundColor(Color(red: 0.206, green: 0.215, blue: 0.22))
-                                            .overlay(
-                                                Image(systemName: "square.and.arrow.up")
-                                                    .foregroundColor(.white)
-                                            )
-                                        Text("ផ្ញើរ Qr")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.white)
-                                 
-   }
-                                }
+                        if let shareImage = shareImage{
+                            ShareQRcode(image: shareImage)
                         }
+//                        if let shareImage = shareImage {
+//                            if let url = saveToTemporaryDirectory(image: shareImage) {
+//                                ShareLink(
+//                                    item: url,
+//                                    preview: SharePreview("RCC Pay", image: Image(uiImage: shareImage))
+//                                ){
+//                                    VStack{
+//                                        Circle()
+//                                            .frame(width: 40)
+//                                            .foregroundColor(Color(red: 0.206, green: 0.215, blue: 0.22))
+//                                            .overlay(
+//                                                Image(systemName: "square.and.arrow.up")
+//                                                    .foregroundColor(.white)
+//                                            )
+//                                        Text("ផ្ញើរ Qr")
+//                                            .font(.system(size: 12))
+//                                            .foregroundColor(.white)
+//                                        
+//                                    }
+//                                }
+//                            }
+//                        }
                                         
 //                        HStack{
 //                            ShapeinQR()
@@ -90,6 +98,23 @@ struct PopUpViewQRCode: View {
                 }
             
         }
+    
+    
+    func saveToTemporaryDirectory(image: UIImage) -> URL? {
+        guard let data = image.pngData() else { return nil }
+
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let fileURL = tempDirectory.appendingPathComponent("RCC_QR.png")
+
+        do {
+            try data.write(to: fileURL)
+            return fileURL
+        } catch {
+            print("Failed to save image: \(error)")
+            return nil
+        }
+    }
+    
     func makeBody() -> some View {
         QRImage()
             .cornerRadius(50)
@@ -115,6 +140,25 @@ struct PopUpViewQRCode: View {
     }
     
     }
+
+
+struct ActivityView: UIViewControllerRepresentable {
+    var activityItems: [Any]
+    var applicationActivities: [UIActivity]? = nil
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: applicationActivities
+        )
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+
+
 #Preview {
     ContentView()
 }
