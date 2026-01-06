@@ -10,10 +10,12 @@ import SwiftUI
 struct ShapeinQR: View {
     var image : String = "square.and.arrow.down"
     var title : String = "ទាញយក"
-    
+    @State var isShowShare = false
     var body: some View {
         VStack{
-            Button(action: {}){
+            Button(action: {
+                isShowShare.toggle()
+            }){
                 Circle()
                     .frame(width: 40)
                     .foregroundColor(Color(red: 0.206, green: 0.215, blue: 0.22))
