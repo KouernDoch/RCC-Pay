@@ -15,12 +15,12 @@ struct ButtonQRCode: View {
         }){
             HStack{
                 Image(systemName: "qrcode")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 24, height: 24)
-                        Text("Pay via QR Code")
-                            .bold()
-                    }
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                Text("Pay via QR Code")
+                    .bold()
+            }
             .padding(.horizontal)
             .frame(maxWidth: .infinity)
         }

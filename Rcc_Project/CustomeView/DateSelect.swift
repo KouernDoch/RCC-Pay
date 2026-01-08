@@ -7,7 +7,7 @@
 import SwiftUI
 
 struct DateSelect: View {
-
+    
     @State private var selectedMonth = Calendar.current.component(.month, from: Date())
     @State private var hasAppeared = false
     private let months = Array(1...12)
@@ -74,7 +74,7 @@ struct MonthCard: View {
     @Environment(\.colorScheme) var colorScheme: ColorScheme
     
     var body: some View {
-//        Text("Hello")
+        //        Text("Hello")
         Button(action: onTap){
             VStackLayout(spacing: cardHeight * 0.05){
                 Text(String(format: "%02d", monthNumber))
@@ -90,21 +90,21 @@ struct MonthCard: View {
                     RoundedRectangle(cornerRadius: cardWidth * 0.2)
                         .fill(.ultraThinMaterial)
                     if colorScheme == .dark {
-                                            RoundedRectangle(cornerRadius: cardWidth * 0.2)
+                        RoundedRectangle(cornerRadius: cardWidth * 0.2)
                             .fill(isSelected ? Color.primary : Color.clear)
-                                                .opacity(isSelected ? 1 : 0.5)
-                                                .animation(.easeInOut(duration: 0.3), value: isSelected)
-                                        } else if colorScheme == .light {
-                                            RoundedRectangle(cornerRadius: cardWidth * 0.2)
-                                                .fill(isSelected ? Color.primary : Color.white)
-                                        }
+                            .opacity(isSelected ? 1 : 0.5)
+                            .animation(.easeInOut(duration: 0.3), value: isSelected)
+                    } else if colorScheme == .light {
+                        RoundedRectangle(cornerRadius: cardWidth * 0.2)
+                            .fill(isSelected ? Color.primary : Color.white)
+                    }
                 }
             )
             .overlay(
-                    RoundedRectangle(cornerRadius: cardWidth * 0.2, style: .continuous)
-                        .stroke(isSelected ? Color.blue.opacity(0.3) : Color.gray.opacity(0.3) ,lineWidth: isSelected ? 1.2 : 0.8)
-                        )
-                       .shadow(color: .gray.opacity(0.08), radius: 5, x: 0, y: 0)
+                RoundedRectangle(cornerRadius: cardWidth * 0.2, style: .continuous)
+                    .stroke(isSelected ? Color.blue.opacity(0.3) : Color.gray.opacity(0.3) ,lineWidth: isSelected ? 1.2 : 0.8)
+            )
+            .shadow(color: .gray.opacity(0.08), radius: 5, x: 0, y: 0)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -112,8 +112,8 @@ struct MonthCard: View {
 
 #Preview {
     VStack(spacing: 20) {
-            DateSelect { selectedMonth in
-                print("Selected month: \(selectedMonth)")
-            }
+        DateSelect { selectedMonth in
+            print("Selected month: \(selectedMonth)")
         }
+    }
 }

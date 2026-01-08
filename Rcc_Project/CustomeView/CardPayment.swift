@@ -34,14 +34,14 @@ struct CardPayment: View {
             Text("$ \(amount)")
                 .foregroundColor(Color(red: 0.3058823529411765, green: 0.803921568627451, blue: 0.5411764705882353))
                 .bold()
-                
+            
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(.white)
                 .shadow(color: .gray.opacity(0.08), radius: 5, x: 0, y: 0)
-
+            
         )
         .padding(.horizontal)
     }

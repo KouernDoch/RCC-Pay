@@ -13,13 +13,13 @@ struct InfoCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-//                .font(.title3)
+            //                .font(.title3)
             Text("$ \(value)")
                 .foregroundColor(.blue)
                 .bold()
         }
         .frame(maxWidth: .infinity, minHeight: 100)
-
+        
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(.white)

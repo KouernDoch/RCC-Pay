@@ -28,42 +28,52 @@ struct ContentView: View {
     
     let months = Calendar.current.monthSymbols
     var body: some View {
-        ZStack{
-            Color(Color(red: 245/255, green: 249/255, blue: 255/255)).ignoresSafeArea(.all)
-            VStack(alignment:.leading){
-                HStack{
-                    Image("Profile")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 50)
-                    VStack(alignment: .leading){
-                        Text("Kouern Doch")
-                            .font(.system(size: 16))
-                        Text("Normal User")
-                            .foregroundStyle(.gray)
-                            .font(.system(size: 14))
-                        
-                    }
+        NavigationStack{
+            ZStack{
+                Color(Color(red: 245/255, green: 249/255, blue: 255/255)).ignoresSafeArea(.all)
+                VStack(alignment:.leading){
                     
-                    Spacer()
-                    Image(systemName: "bell")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 20)
-                        .padding(.horizontal)
-                    Image(systemName: "gearshape")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 20)
-                }
-                .padding(.horizontal)
-                
-                DateSelect { selectedDate in
-                    selectedmonth = months[selectedDate - 1]
-                }
-//                ScrollView(.vertical, showsIndicators: false) {
+                    HStack{
+                        NavigationLink(destination: ProfileView()){
+                            Image("Profile")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 50)
+                            VStack(alignment: .leading){
+                                Text("Kouern Doch")
+                                    .font(.system(size: 16))
+                                Text("Normal User")
+                                    .foregroundStyle(.gray)
+                                    .font(.system(size: 14))
+                                
+                            }
+                        }
+                        
+                        Spacer()
+                        NavigationLink(destination: NotificationView()){
+                            Image(systemName: "bell")
+                                .resizable()
+                                .foregroundStyle(Color.black)
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 20)
+                                .padding(.horizontal)
+                        }
+                        NavigationLink(destination: ProfileView()){
+                            Image(systemName: "gearshape")
+                                .resizable()
+                                .foregroundStyle(Color.black)
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 20)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    DateSelect { selectedDate in
+                        selectedmonth = months[selectedDate - 1]
+                    }
+                    //                ScrollView(.vertical, showsIndicators: false) {
                     CardViewMonthlyBill(selectedmonth: $selectedmonth,selectedYear: $selectedYear)
-                        Text("Daily Payment")
+                    Text("Daily Payment")
                         .font(.title3)
                         .fontWeight(.semibold)
                         .padding(.horizontal)
@@ -79,18 +89,19 @@ struct ContentView: View {
                     
                     
                     Spacer()
-//                }
+                    //                }
+                    
+                }
+                .onChange(of: selectedYear) { oldValue, newValue in
+                    print("Year:", selectedYear, "Month:", selectedmonth)
+                }
+                .onChange(of: selectedmonth) { oldValue, newValue in
+                    print("Year:", selectedYear, "Month:", selectedmonth)
+                }
                 
-            }
-            .onChange(of: selectedYear) { oldValue, newValue in
-                print("Year:", selectedYear, "Month:", selectedmonth)
-            }
-            .onChange(of: selectedmonth) { oldValue, newValue in
-                print("Year:", selectedYear, "Month:", selectedmonth)
             }
             
         }
-        
     }
 }
 

@@ -26,7 +26,7 @@ struct QRImage: View {
                             Text("$ 0.00")
                                 .foregroundColor(.black)
                                 .fontWeight(.bold)
-                                
+                            
                         }
                         .padding()
                         Spacer()
@@ -38,7 +38,7 @@ struct QRImage: View {
                         .frame(width: 180)
                 }
             )
-
+        
     }
 }
 
@@ -47,19 +47,19 @@ struct QrCodeImage {
     let context = CIContext()
     
     func generateQRCode(from text: String) -> UIImage {
-            var qrImage = UIImage(systemName: "xmark.circle") ?? UIImage()
-            let data = Data(text.utf8)
-            let filter = CIFilter.qrCodeGenerator()
-            filter.setValue(data, forKey: "inputMessage")
-
-            let transform = CGAffineTransform(scaleX: 20, y: 20)
-            if let outputImage = filter.outputImage?.transformed(by: transform) {
-                if let image = context.createCGImage(
-                    outputImage,
-                    from: outputImage.extent) {
-                    qrImage = UIImage(cgImage: image)
-                }
+        var qrImage = UIImage(systemName: "xmark.circle") ?? UIImage()
+        let data = Data(text.utf8)
+        let filter = CIFilter.qrCodeGenerator()
+        filter.setValue(data, forKey: "inputMessage")
+        
+        let transform = CGAffineTransform(scaleX: 20, y: 20)
+        if let outputImage = filter.outputImage?.transformed(by: transform) {
+            if let image = context.createCGImage(
+                outputImage,
+                from: outputImage.extent) {
+                qrImage = UIImage(cgImage: image)
             }
-            return qrImage
+        }
+        return qrImage
     }
 }

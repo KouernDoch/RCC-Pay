@@ -22,14 +22,14 @@ struct CardViewMonthlyBill: View {
     var body: some View {
         VStack {
             VStack(alignment: .leading, spacing: 16) {
-
+                
                 // Header
                 HStack(spacing: 8) {
                     Image(systemName: "calendar")
                         .foregroundColor(.accentColor)
                     HStack{
-                            Text("Monthly Bill - \(selectedmonth) ")
-//                            .font(.title3)
+                        Text("Monthly Bill - \(selectedmonth) ")
+                        //                            .font(.title3)
                             .foregroundColor(.accentColor)
                             .fontWeight(.semibold)
                         Spacer()
@@ -37,24 +37,24 @@ struct CardViewMonthlyBill: View {
                             ForEach(years, id: \.self) { year in
                                 Text(String(year)).tag(year)
                             }
-                           
+                            
                         }
                         .pickerStyle(.menu)
                     }
                 }
-
+                
                 // Total Amount Card
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Total Amount")
-//                            .font(.title3)
+                        //                            .font(.title3)
                         Text("$ 38.00")
                             .foregroundColor(.blue)
                             .bold()
                     }
-
+                    
                     Spacer()
-
+                    
                     Image(systemName: "dollarsign")
                         .foregroundColor(.blue)
                         .padding(12)
@@ -68,7 +68,7 @@ struct CardViewMonthlyBill: View {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(.white)
                 )
-
+                
                 // Bottom Cards (Responsive)
                 HStack(spacing: 12) {
                     InfoCard(title:"Remain amount",value: "0.00")
@@ -92,5 +92,5 @@ struct CardViewMonthlyBill: View {
 
 #Preview {
     ContentView()
-        
+    
 }
