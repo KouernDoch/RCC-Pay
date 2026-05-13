@@ -121,6 +121,10 @@
 "admin_no_paid_users"          = "គ្មានអ្នកបង់សម្រាប់ខែនេះ។";
 "admin_issue_all_users"        = "ចេញវិក្កយបត្រជូនអ្នកប្រើទាំងអស់";
 "admin_invoice_status_header"  = "ស្ថានភាពវិក្កយបត្រ";
+"admin_invoice_filter_all"     = "ទាំងអស់";
+"admin_invoice_filter_paid"    = "បានបង់";
+"admin_invoice_filter_unpaid"  = "មិនទាន់បង់";
+"admin_invoice_filter_empty"   = "គ្មានអ្នករស់នៅត្រូវនឹងតម្រងនេះសម្រាប់ខែដែលបានជ្រើស។";
 "admin_status_no_invoice"      = "គ្មានវិក្កយបត្រ";
 "admin_status_paid"            = "បានបង់";
 "admin_status_issued_unpaid"   = "បានចេញ · មិនទាន់បង់";

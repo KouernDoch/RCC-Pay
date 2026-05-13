@@ -7,28 +7,10 @@
 
 import SwiftUI
 
-struct PaymentModel : Identifiable {
-    let id = UUID()
-    var image: String
-    var name : String
-    var date : String
-    var amount : String
-}
 struct ContentView: View {
 
     @EnvironmentObject private var lm: LocalizationManager
-
-    @State var paymentModels : [PaymentModel] = [
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00"),
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00"),
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00"),
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00"),
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00")
-    ]
-    @State var selectedmonth = ""
-    @State private var selectedYear = Calendar.current.component(.year, from: Date())
-    
-    let months = Calendar.current.monthSymbols
+    @StateObject private var viewModel = DashboardViewModel()
     var body: some View {
         NavigationStack {
             ZStack {
@@ -40,7 +22,7 @@ struct ContentView: View {
                         displayName: "Kouern Doch",
                         roleSubtitle: lm["normal_user"],
                         onMonthSelected: { selectedDate in
-                            selectedmonth = months[selectedDate - 1]
+                            viewModel.selectedMonth = viewModel.months[selectedDate - 1]
                         }
                     )
 
@@ -48,8 +30,8 @@ struct ContentView: View {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 0) {
                             CardViewMonthlyBill(
-                                selectedmonth: $selectedmonth,
-                                selectedYear: $selectedYear
+                                selectedmonth: $viewModel.selectedMonth,
+                                selectedYear: $viewModel.selectedYear
                             )
                             .padding(.top, 4)
 
@@ -73,7 +55,7 @@ struct ContentView: View {
 
                             // Cards
                             VStack(spacing: 8) {
-                                ForEach(paymentModels) { paymentModel in
+                                ForEach(viewModel.paymentModels) { paymentModel in
                                     CardPayment(
                                         name: paymentModel.name,
                                         image: paymentModel.image,
@@ -86,8 +68,8 @@ struct ContentView: View {
                         }
                     }
                 }
-                .onChange(of: selectedYear)  { _, _ in }
-                .onChange(of: selectedmonth) { _, _ in }
+                .onChange(of: viewModel.selectedYear)  { _, _ in }
+                .onChange(of: viewModel.selectedMonth) { _, _ in }
             }
             .toolbarBackground(.hidden, for: .navigationBar)
             .navigationBarHidden(true)

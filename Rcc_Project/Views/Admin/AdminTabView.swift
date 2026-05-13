@@ -8,40 +8,6 @@
 import SwiftUI
 import Foundation
 
-// MARK: - Models
-
-enum AdminInvoiceType: String, CaseIterable, Identifiable, Hashable {
-    case full
-    case half
-
-    var id: String { rawValue }
-}
-
-struct AdminResidentMonthRecord: Equatable {
-    var invoiceIssued: Bool
-    var isPaid: Bool
-    var paidDate: String
-    var invoiceType: AdminInvoiceType? = nil
-    var invoiceAmount: Double? = nil
-    var invoiceNumber: String? = nil
-    var invoiceDate: String? = nil
-}
-
-struct AdminResident: Identifiable {
-    let id: UUID
-    var name: String
-    var email: String
-    var image: String
-    var defaultDue: String
-    var defaultPaymentType: AdminInvoiceType
-    var months: [String: AdminResidentMonthRecord]
-}
-
-
-private func adminPeriodKey(year: Int, month: Int) -> String {
-    "\(year)-\(month)"
-}
-
 // MARK: - Root
 
 struct AdminTabView: View {
@@ -49,56 +15,9 @@ struct AdminTabView: View {
     @EnvironmentObject private var lm: LocalizationManager
     @Environment(\.colorScheme) private var colorScheme
 
-    @State private var filterMonth = Calendar.current.component(.month, from: Date())
-    @State private var filterYear = Calendar.current.component(.year, from: Date())
-    @State private var selectedmonth = ""
-    @State private var residents: [AdminResident] = AdminTabView.seedResidents()
-    @State private var showIssuedAlert = false
-    @State private var userSearchText: String = ""
-    @State private var selectedAdminTab: Int = 0
+    @StateObject private var viewModel = AdminViewModel()
 
-    // MARK: - Manage Users (edit/delete)
-    @State private var showManageEditSheet = false
-    @State private var residentToEdit: AdminResident? = nil
-    @State private var draftName: String = ""
-    @State private var draftEmail: String = ""
-    @State private var draftImage: String = "Profile"
-    @State private var draftPaymentType: AdminInvoiceType = .full
-
-    @State private var showDeleteConfirmation = false
-    @State private var residentToDelete: AdminResident? = nil
-    
-    @State var paymentModels : [PaymentModel] = [
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00"),
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00"),
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00"),
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00"),
-        PaymentModel(image: "Profile", name: "Leng Chingmony", date: "01 Jan, 2026", amount: "38.00")
-    ]
-
-
-    private let months = Calendar.current.monthSymbols
     private let blue = Color(red: 0.22, green: 0.50, blue: 0.98)
-
-    private var currentKey: String {
-        adminPeriodKey(year: filterYear, month: filterMonth)
-    }
-
-    private var paidCount: Int {
-        residents.filter { $0.months[currentKey]?.isPaid == true }.count
-    }
-
-    private var unpaidCount: Int {
-        max(0, residents.count - paidCount)
-    }
-
-    private var paidResidents: [AdminResident] {
-        residents.filter { $0.months[currentKey]?.isPaid == true }
-    }
-
-    private var unpaidResidents: [AdminResident] {
-        residents.filter { ($0.months[currentKey]?.isPaid ?? false) == false }
-    }
 
     var body: some View {
         NavigationStack {
@@ -109,10 +28,9 @@ struct AdminTabView: View {
                     DashboardChromeView(
                         displayName: lm["admin_display_name"],
                         roleSubtitle: lm["admin_user"],
-                        showMonthSelector: selectedAdminTab != 3,
+                        showMonthSelector: viewModel.selectedAdminTab != 3,
                         onMonthSelected: { month in
-                            filterMonth = month
-                            selectedmonth = months[month - 1]
+                            viewModel.onChromeMonthSelected(month)
                         }
                     )
 
@@ -125,7 +43,7 @@ struct AdminTabView: View {
 //                    .padding(.horizontal)
 //                    .padding(.vertical, 6)
 
-                    TabView(selection: $selectedAdminTab) {
+                    TabView(selection: $viewModel.selectedAdminTab) {
                         adminHomeTab
                             .tabItem { Label(lm["admin_tab_home"], systemImage: "house.fill") }
                             .tag(0)
@@ -145,29 +63,33 @@ struct AdminTabView: View {
             .navigationBarHidden(true)
         }
         .onAppear {
-            if selectedmonth.isEmpty {
-                selectedmonth = months[filterMonth - 1]
-            }
+            viewModel.ensureSelectedMonthIfNeeded()
         }
-        .alert(lm["admin_invoice_issued_title"], isPresented: $showIssuedAlert) {
+        .alert(lm["admin_invoice_issued_title"], isPresented: $viewModel.showIssuedAlert) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("\(lm["admin_invoice_issued_message"]) \(selectedmonth) \(filterYear).")
+            Text("\(lm["admin_invoice_issued_message"]) \(viewModel.selectedMonthLabel) \(viewModel.filterYear).")
         }
-        .sheet(isPresented: $showManageEditSheet) {
+        .sheet(isPresented: $viewModel.showManageEditSheet) {
             adminEditUserSheet
         }
         .confirmationDialog(
             lm["admin_delete_user_title"],
-            isPresented: $showDeleteConfirmation,
+            isPresented: $viewModel.showDeleteConfirmation,
             titleVisibility: .visible
         ) {
             Button(lm["admin_delete"], role: .destructive) {
-                deleteResident()
+                viewModel.deleteResident()
             }
-            Button(lm["admin_cancel_delete"], role: .cancel) { }
+            Button(lm["admin_cancel_delete"], role: .cancel) {
+                viewModel.clearPendingDelete()
+            }
         } message: {
-            Text(lm["admin_delete_user_message"])
+            if let name = viewModel.residentToDelete?.name {
+                Text("\(lm["admin_delete_user_message"])\n\n\(name)")
+            } else {
+                Text(lm["admin_delete_user_message"])
+            }
         }
     }
 
@@ -203,7 +125,7 @@ struct AdminTabView: View {
 
                         // Cards
                         VStack(spacing: 8) {
-                            ForEach(paymentModels) { paymentModel in
+                            ForEach(viewModel.paymentModels) { paymentModel in
                                 CardPayment(
                                     name: paymentModel.name,
                                     image: paymentModel.image,
@@ -242,19 +164,19 @@ struct AdminTabView: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 6) {
-                        Text(selectedmonth.isEmpty ? "—" : selectedmonth)
+                        Text(viewModel.selectedMonthLabel.isEmpty ? "—" : viewModel.selectedMonthLabel)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                         
                         Menu {
-                            Picker("Year", selection: $filterYear) {
+                            Picker("Year", selection: $viewModel.filterYear) {
                                 ForEach(2024...2040, id: \.self) { year in
                                     Text(String(year)).tag(year)
                                 }
                             }
                         } label: {
                             HStack(spacing: 3) {
-                                Text(String(filterYear))
+                                Text(String(viewModel.filterYear))
                                     .font(.system(size: 12, weight: .semibold))
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 10, weight: .bold))
@@ -273,19 +195,19 @@ struct AdminTabView: View {
                 HStack(spacing: 10) {
                     summaryTile(
                         icon: "person.3.fill",
-                        value: "\(residents.count)",
+                        value: "\(viewModel.residents.count)",
                         title: lm["admin_total_users"],
                         accent: blue
                     )
                     summaryTile(
                         icon: "checkmark.seal.fill",
-                        value: "\(paidCount)",
+                        value: "\(viewModel.paidCount)",
                         title: lm["admin_total_paid_users"],
                         accent: .green
                     )
                     summaryTile(
                         icon: "exclamationmark.triangle.fill",
-                        value: "\(unpaidCount)",
+                        value: "\(viewModel.unpaidCount)",
                         title: lm["admin_total_unpaid_users"],
                         accent: .orange
                     )
@@ -343,7 +265,7 @@ struct AdminTabView: View {
                 Text(lm["admin_paid_this_month"])
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.primary)
-                Text("\(paidCount) / \(residents.count)")
+                Text("\(viewModel.paidCount) / \(viewModel.residents.count)")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -371,10 +293,10 @@ struct AdminTabView: View {
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
 
-            ScrollView(.vertical, showsIndicators: false) {
+           
                 VStack(alignment: .leading, spacing: 14) {
                     Button {
-                        issueInvoicesForCurrentPeriod()
+                        viewModel.issueInvoicesForCurrentPeriod()
                     } label: {
                         HStack {
                             Image(systemName: "doc.badge.plus")
@@ -389,29 +311,89 @@ struct AdminTabView: View {
                     }
                     .padding(.horizontal)
 
-                    Text(lm["admin_invoice_status_header"])
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal)
+                    HStack(alignment: .center, spacing: 12) {
+                        Text(lm["admin_invoice_status_header"])
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.primary)
 
-                    VStack(spacing: 14) {
-                        ForEach(residents) { r in
-                            AdminInvoiceCard(
-                                resident: r,
-                                record: r.months[currentKey]
+                        Spacer(minLength: 8)
+
+                        Menu {
+                            ForEach(AdminInvoiceTabFilter.allCases) { option in
+                                Button {
+                                    viewModel.invoiceTabFilter = option
+                                } label: {
+                                    HStack {
+                                        Text(invoiceFilterTitle(option))
+                                        Spacer(minLength: 8)
+                                        if viewModel.invoiceTabFilter == option {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 13, weight: .semibold))
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text(invoiceFilterTitle(viewModel.invoiceTabFilter))
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(blue)
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(blue)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(blue.opacity(colorScheme == .dark ? 0.22 : 0.12))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(blue.opacity(0.28), lineWidth: 1)
                             )
                         }
                     }
                     .padding(.horizontal)
-                    .padding(.bottom, 24)
+                    ScrollView(.vertical, showsIndicators: false) {
+
+                    if viewModel.residentsForInvoiceList.isEmpty {
+                        Text(lm["admin_invoice_filter_empty"])
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 28)
+                            .padding(.horizontal)
+                    } else {
+                        VStack(spacing: 14) {
+                            ForEach(viewModel.residentsForInvoiceList) { r in
+                                AdminInvoiceCard(
+                                    resident: r,
+                                    record: r.months[viewModel.currentKey]
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 24)
+                    }
                 }
                 .padding(.top, 8)
             }
         }
     }
 
+    private func invoiceFilterTitle(_ filter: AdminInvoiceTabFilter) -> String {
+        switch filter {
+        case .all: return lm["admin_invoice_filter_all"]
+        case .paid: return lm["admin_invoice_filter_paid"]
+        case .unpaid: return lm["admin_invoice_filter_unpaid"]
+        }
+    }
+
     private func invoiceStatusRow(for r: AdminResident) -> some View {
-        let rec = r.months[currentKey]
+        let rec = r.months[viewModel.currentKey]
         let status: String = {
             guard let rec else { return lm["admin_status_no_invoice"] }
             if rec.isPaid { return lm["admin_status_paid"] }
@@ -458,7 +440,7 @@ struct AdminTabView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 6)
 
-                    if unpaidResidents.isEmpty {
+                    if viewModel.unpaidResidents.isEmpty {
                         Text(lm["admin_all_paid"])
                             .font(.system(size: 13))
                             .foregroundStyle(.secondary)
@@ -466,15 +448,15 @@ struct AdminTabView: View {
                             .padding(.vertical, 24)
                     } else {
                         VStack(spacing: 8) {
-                            ForEach(unpaidResidents) { r in
+                            ForEach(viewModel.unpaidResidents) { r in
                                 let due = Double(r.defaultDue) ?? 0.0
-                                let rec = r.months[currentKey]
+                                let rec = r.months[viewModel.currentKey]
                                 let invoiceAmountValue = rec?.invoiceAmount ?? ((r.defaultPaymentType == .half) ? (due / 2.0) : due)
                                 let invoiceAmountText = String(format: "%.2f", invoiceAmountValue)
                                 CardPayment(
                                     name: r.name,
                                     image: r.image,
-                                    date: "\(lm["admin_unpaid_for"]) \(selectedmonth) \(filterYear)",
+                                    date: "\(lm["admin_unpaid_for"]) \(viewModel.selectedMonthLabel) \(viewModel.filterYear)",
                                     amount: invoiceAmountText
                                 )
                             }
@@ -489,13 +471,7 @@ struct AdminTabView: View {
     // MARK: - Manage Users
 
     private var adminManageUsersTab: some View {
-        let filteredResidents: [AdminResident] = {
-            let q = userSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !q.isEmpty else { return residents }
-            return residents.filter { $0.name.localizedCaseInsensitiveContains(q) }
-        }()
-
-        return ZStack {
+        ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
 
             
@@ -508,7 +484,7 @@ struct AdminTabView: View {
                             Text(lm["admin_manage_users_title"])
                                 .font(.system(size: 20, weight: .bold))
                                 .foregroundStyle(.primary)
-                            Text("\(residents.count) \(lm["admin_total_users"].lowercased())")
+                            Text("\(viewModel.residents.count) \(lm["admin_total_users"].lowercased())")
                                 .font(.system(size: 13))
                                 .foregroundStyle(.secondary)
                         }
@@ -522,14 +498,14 @@ struct AdminTabView: View {
 
                         TextField(
                             lm["admin_search_users"],
-                            text: $userSearchText
+                            text: $viewModel.userSearchText
                         )
                         .textInputAutocapitalization(.none)
                         .disableAutocorrection(true)
 
-                        if !userSearchText.isEmpty {
+                        if !viewModel.userSearchText.isEmpty {
                             Button {
-                                userSearchText = ""
+                                viewModel.userSearchText = ""
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundStyle(.secondary)
@@ -545,29 +521,40 @@ struct AdminTabView: View {
                 }
                 .padding(.top, 10)
                 .padding(.bottom, 12)
-         ScrollView(.vertical, showsIndicators: false) {
 
-                if filteredResidents.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "person.crop.circle.badge.questionmark")
-                            .font(.system(size: 44))
-                            .foregroundColor(.secondary.opacity(0.5))
-                        Text(userSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? lm["admin_manage_users_empty"] : lm["admin_manage_users_no_results"])
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
+                if viewModel.filteredResidents.isEmpty {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.badge.questionmark")
+                                .font(.system(size: 44))
+                                .foregroundColor(.secondary.opacity(0.5))
+                            Text(viewModel.userSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? lm["admin_manage_users_empty"] : lm["admin_manage_users_no_results"])
+                                .font(.system(size: 14))
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 48)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 48)
                 } else {
-                    VStack(spacing: 14) {
-                        ForEach(filteredResidents) { r in
+                    List {
+                        ForEach(viewModel.filteredResidents) { r in
                             userManageRow(resident: r)
+                                .listRowInsets(EdgeInsets(top: 7, leading: 20, bottom: 7, trailing: 20))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        viewModel.requestDeleteResident(r)
+                                    } label: {
+                                        Label(lm["admin_delete"], systemImage: "trash.fill")
+                                    }
+                                }
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 28)
-                }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .environment(\.defaultMinListRowHeight, 1)
                 }
             }
         }
@@ -614,7 +601,7 @@ struct AdminTabView: View {
 
                     Menu {
                         Button {
-                            setResidentPaymentType(resident, to: .full)
+                            viewModel.setResidentPaymentType(resident, to: .full)
                         } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: isFullPay ? "checkmark.circle.fill" : "circle")
@@ -623,7 +610,7 @@ struct AdminTabView: View {
                         }
 
                         Button {
-                            setResidentPaymentType(resident, to: .half)
+                            viewModel.setResidentPaymentType(resident, to: .half)
                         } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: !isFullPay ? "checkmark.circle.fill" : "circle")
@@ -665,253 +652,21 @@ struct AdminTabView: View {
         )
     }
 
-    private func setResidentPaymentType(_ resident: AdminResident, to newType: AdminInvoiceType) {
-        guard let idx = residents.firstIndex(where: { $0.id == resident.id }) else { return }
-        residents[idx].defaultPaymentType = newType
-
-        // If invoice is already issued for the currently selected period and not paid,
-        // update the invoice amount/type so UI stays in sync.
-        let key = currentKey
-        if var rec = residents[idx].months[key],
-           rec.invoiceIssued,
-           rec.isPaid == false {
-            let due = Double(residents[idx].defaultDue) ?? 0.0
-            rec.invoiceType = newType
-            rec.invoiceAmount = (newType == .half) ? (due / 2.0) : due
-            residents[idx].months[key] = rec
-        }
-    }
-
     // MARK: - Manage Users Sheet
 
     private var adminEditUserSheet: some View {
         AdminEditUserSheetView(
-            draftName: $draftName,
-            draftEmail: $draftEmail,
-            draftImage: $draftImage,
-            draftPaymentType: $draftPaymentType,
+            draftName: $viewModel.draftName,
+            draftEmail: $viewModel.draftEmail,
+            draftImage: $viewModel.draftImage,
+            draftPaymentType: $viewModel.draftPaymentType,
             onCancel: {
-                showManageEditSheet = false
+                viewModel.cancelEditSheet()
             },
             onSave: {
-                saveEditedResident()
-                showManageEditSheet = false
+                viewModel.saveEditSheet()
             }
         )
-    }
-
-    private func beginEdit(_ resident: AdminResident) {
-        residentToEdit = resident
-        draftName = resident.name
-        draftEmail = resident.email
-        draftImage = resident.image
-        draftPaymentType = resident.defaultPaymentType
-        showManageEditSheet = true
-    }
-
-    private func saveEditedResident() {
-        guard let editing = residentToEdit else { return }
-        guard let idx = residents.firstIndex(where: { $0.id == editing.id }) else { return }
-
-        residents[idx].name = draftName
-        residents[idx].email = draftEmail
-        residents[idx].image = draftImage
-        residents[idx].defaultPaymentType = draftPaymentType
-
-        // If invoice is already issued for the currently selected period and not paid,
-        // update the invoice amount/type so UI stays in sync.
-        let key = currentKey
-        if var rec = residents[idx].months[key],
-           rec.invoiceIssued,
-           rec.isPaid == false {
-            let due = Double(residents[idx].defaultDue) ?? 0.0
-            rec.invoiceType = draftPaymentType
-            rec.invoiceAmount = (draftPaymentType == .half) ? (due / 2.0) : due
-            residents[idx].months[key] = rec
-        }
-    }
-
-    private func deleteResident() {
-        guard let toDelete = residentToDelete else { return }
-        residents.removeAll { $0.id == toDelete.id }
-        residentToDelete = nil
-    }
-
-    // MARK: - Actions
-
-    private func issueInvoicesForCurrentPeriod() {
-        let key = currentKey
-
-        let invoiceDate = generateInvoiceDateString()
-        for i in residents.indices {
-            var m = residents[i].months[key] ?? AdminResidentMonthRecord(invoiceIssued: false, isPaid: false, paidDate: "-")
-
-            // Only issue invoices for unpaid records.
-            if m.isPaid { continue }
-
-            m.invoiceIssued = true
-            let due = Double(residents[i].defaultDue) ?? 0.0
-            m.invoiceType = residents[i].defaultPaymentType
-            m.invoiceAmount = (m.invoiceType == .half) ? (due / 2.0) : due
-            m.invoiceNumber = generateInvoiceNumber(residentIndex: i)
-            m.invoiceDate = invoiceDate
-
-            m.isPaid = false
-            m.paidDate = "-"
-            residents[i].months[key] = m
-        }
-
-        showIssuedAlert = true
-    }
-
-    private func issueInvoiceForResident(_ resident: AdminResident, invoiceType: AdminInvoiceType, amount: Double) {
-        let key = currentKey
-        guard let idx = residents.firstIndex(where: { $0.id == resident.id }) else { return }
-
-        var m = residents[idx].months[key] ?? AdminResidentMonthRecord(invoiceIssued: false, isPaid: false, paidDate: "-")
-        if m.isPaid { return }
-
-        m.invoiceIssued = true
-        m.invoiceType = invoiceType
-        m.invoiceAmount = amount
-        m.invoiceNumber = generateInvoiceNumber(residentIndex: idx)
-        m.invoiceDate = generateInvoiceDateString()
-
-        m.isPaid = false
-        m.paidDate = "-"
-        residents[idx].months[key] = m
-    }
-
-    private func generateInvoiceNumber(residentIndex: Int) -> String {
-        let monthPadded = String(format: "%02d", filterMonth)
-        let idxPadded = String(format: "%03d", residentIndex + 1)
-        return "INV-\(filterYear)-\(monthPadded)-\(idxPadded)"
-    }
-
-    private func generateInvoiceDateString() -> String {
-        var components = DateComponents()
-        components.year = filterYear
-        components.month = filterMonth
-        components.day = 4
-
-        guard let date = Calendar.current.date(from: components) else { return "-" }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd MMMM yyyy"
-        return formatter.string(from: date)
-    }
-
-    // MARK: - Seed
-
-    private static func seedResidents() -> [AdminResident] {
-        let k = adminPeriodKey(year: 2026, month: 1)
-
-        let amount = Double("38.00") ?? 0.0
-        let seedComponents = DateComponents(year: 2026, month: 1, day: 4)
-        let seedDate = Calendar.current.date(from: seedComponents)
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd MMMM yyyy"
-        let invoiceDate = seedDate.map { formatter.string(from: $0) } ?? "-"
-
-        return [
-            AdminResident(
-                id: UUID(),
-                name: "Leng Chingmony",
-                email: "leng.chningmony@example.com",
-                image: "Profile",
-                defaultDue: "38.00",
-                defaultPaymentType: .full,
-                months: [
-                    k: AdminResidentMonthRecord(
-                        invoiceIssued: true,
-                        isPaid: true,
-                        paidDate: "01 Jan, 2026",
-                        invoiceType: .full,
-                        invoiceAmount: amount,
-                        invoiceNumber: "INV-2026-01-001",
-                        invoiceDate: invoiceDate
-                    )
-                ]
-            )
-            ,
-            AdminResident(
-                id: UUID(),
-                name: "Sok Dara",
-                email: "sok.dara@example.com",
-                image: "Profile",
-                defaultDue: "38.00",
-                defaultPaymentType: .full,
-                months: [
-                    k: AdminResidentMonthRecord(
-                        invoiceIssued: true,
-                        isPaid: true,
-                        paidDate: "03 Jan, 2026",
-                        invoiceType: .full,
-                        invoiceAmount: amount,
-                        invoiceNumber: "INV-2026-01-002",
-                        invoiceDate: invoiceDate
-                    )
-                ]
-            ),
-            AdminResident(
-                id: UUID(),
-                name: "Chan Theary",
-                email: "chan.theary@example.com",
-                image: "Profile",
-                defaultDue: "38.00",
-                defaultPaymentType: .full,
-                months: [
-                    k: AdminResidentMonthRecord(
-                        invoiceIssued: true,
-                        isPaid: true,
-                        paidDate: "02 Jan, 2026",
-                        invoiceType: .full,
-                        invoiceAmount: amount,
-                        invoiceNumber: "INV-2026-01-003",
-                        invoiceDate: invoiceDate
-                    )
-                ]
-            ),
-            AdminResident(
-                id: UUID(),
-                name: "Phan Sopheak",
-                email: "phan.sopheak@example.com",
-                image: "Profile",
-                defaultDue: "38.00",
-                defaultPaymentType: .half,
-                months: [
-                    k: AdminResidentMonthRecord(
-                        invoiceIssued: true,
-                        isPaid: false,
-                        paidDate: "-",
-                        invoiceType: .half,
-                        invoiceAmount: amount / 2,
-                        invoiceNumber: "INV-2026-01-004",
-                        invoiceDate: invoiceDate
-                    )
-                ]
-            ),
-            AdminResident(
-                id: UUID(),
-                name: "Kouern Doch",
-                email: "kouern.doch@example.com",
-                image: "Profile",
-                defaultDue: "38.00",
-                defaultPaymentType: .half,
-                months: [
-                    k: AdminResidentMonthRecord(
-                        invoiceIssued: true,
-                        isPaid: false,
-                        paidDate: "-",
-                        invoiceType: .half,
-                        invoiceAmount: amount / 2,
-                        invoiceNumber: "INV-2026-01-005",
-                        invoiceDate: invoiceDate
-                    )
-                ]
-            )
-        ]
     }
 }
 

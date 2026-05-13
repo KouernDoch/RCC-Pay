@@ -121,6 +121,10 @@
 "admin_no_paid_users"          = "No paid users for this month.";
 "admin_issue_all_users"        = "Issue invoice to all users";
 "admin_invoice_status_header"  = "Invoice status";
+"admin_invoice_filter_all"     = "All";
+"admin_invoice_filter_paid"    = "Paid";
+"admin_invoice_filter_unpaid"  = "Unpaid";
+"admin_invoice_filter_empty"   = "No residents match this filter for the selected month.";
 "admin_status_no_invoice"      = "No invoice";
 "admin_status_paid"            = "Paid";
 "admin_status_issued_unpaid"   = "Issued · Unpaid";

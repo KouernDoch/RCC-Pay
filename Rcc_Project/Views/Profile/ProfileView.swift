@@ -9,15 +9,6 @@ import SwiftUI
 import PhotosUI
 import UserNotifications
 
-// MARK: - Menu Row Model
-
-struct ProfileMenuItem {
-    let icon: String
-    let iconColor: Color
-    let iconBg: Color
-    let title: String
-}
-
 // MARK: - Reusable Row
 
 struct ProfileMenuRow: View {
