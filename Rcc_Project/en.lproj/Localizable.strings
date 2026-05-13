@@ -1,0 +1,155 @@
+/* ── ContentView ── */
+"daily_payment"      = "Daily Payment";
+"see_all"            = "See all";
+"normal_user"        = "Normal User";
+
+/* ── NotificationView ── */
+"notifications"      = "Notifications";
+"all"                = "All";
+"unread"             = "Unread";
+"monthly_bill"       = "Monthly Bill";
+"no_notifications"   = "No Notifications";
+"all_caught_up"      = "You're all caught up!";
+"delete"             = "Delete";
+"mark_read"          = "Read";
+
+/* ── CardViewMonthlyBill ── */
+"paid"               = "Paid";
+"total_due"          = "Total Due";
+"remain"             = "Remain";
+"pay_via_qr"         = "Pay via QR Code";
+
+/* ── ProfileView ── */
+"settings"           = "Settings";
+"preference"         = "Preference";
+"password_security"  = "Password & Security";
+"notification_menu"  = "Notification";
+"language"           = "Language";
+"about_us"           = "About Us";
+"theme"              = "Theme";
+"sign_out"           = "Sign Out";
+"rcc_member"         = "RCC Member";
+
+/* ── ThemePickerSheet ── */
+"appearance"         = "Appearance";
+"light"              = "Light";
+"dark"               = "Dark";
+"system"             = "System";
+
+/* ── LoginView ── */
+"welcome_back"          = "Welcome Back";
+"login_subtitle"        = "Sign in to your account";
+"username"              = "Username";
+"login"                 = "Login";
+"ph_username"           = "Enter your username";
+"ph_login_password"     = "Enter your password";
+"invalid_credentials"   = "Invalid username or password";
+"forgot_password"       = "Forgot password?";
+
+/* ── PasswordSecurityView ── */
+"current_password"      = "Current Password";
+"new_password"          = "New Password";
+"confirm_password"      = "Confirm New Password";
+"save_changes"          = "Save Changes";
+"password_too_short"    = "Password must be at least 6 characters";
+"password_mismatch"     = "New passwords do not match";
+"password_incorrect"    = "Current password is incorrect";
+"password_changed"      = "Password changed successfully!";
+"password_strength"     = "Password strength";
+"strength_weak"         = "Weak";
+"strength_medium"       = "Medium";
+"strength_strong"       = "Strong";
+"show"                  = "Show";
+"hide"                  = "Hide";
+"ph_current_password"   = "Enter your current password";
+"ph_new_password"       = "At least 6 characters";
+"ph_confirm_password"   = "Re-enter new password";
+
+/* ── ForgotPasswordView ── */
+"fp_step1_title"        = "Find Your Account";
+"fp_step1_subtitle"     = "Enter your username to get started";
+"fp_step2_title"        = "Reset Password";
+"fp_step2_subtitle"     = "Create a new password for your account";
+"fp_success_title"      = "Password Reset!";
+"fp_success_subtitle"   = "Your password has been updated successfully.";
+"fp_account_not_found"  = "Username not found. Please try again.";
+"fp_passwords_match"    = "Passwords match";
+"find_account"          = "Find Account";
+"reset_password"        = "Reset Password";
+"back_to_login"         = "Back to Login";
+"back"                  = "Back";
+
+/* ── SignUpView ── */
+"su_title"              = "Create Account";
+"su_subtitle"           = "Fill in your details below";
+"ph_email"              = "Enter your email";
+"gender"                = "Gender";
+"male"                  = "Male";
+"female"                = "Female";
+"other"                 = "Other";
+"create_account"        = "Create Account";
+"have_account"          = "Already have an account?";
+"dont_have_account"     = "Don't have an account?";
+"sign_up"               = "Sign Up";
+"su_username_short"     = "Username must be at least 3 characters";
+"su_select_gender"      = "Please select your gender";
+"email_invalid"         = "Please enter a valid email address";
+"su_success_title"      = "Account Created!";
+"su_success_subtitle"   = "Your account has been set up successfully.\nYou can now log in.";
+"go_to_login"           = "Go to Login";
+
+/* ── AboutUsView ── */
+"creator"            = "Creator";
+"about_the_app"      = "About the App";
+"organization"       = "Organization";
+"email"              = "Email";
+"version"            = "Version";
+"rcc_pay_description" = "RCC Pay is a dormitory payment management application designed to simplify monthly bill tracking and payments for residents of the RCC dormitory. Users can view their billing history, pay monthly dues, and receive instant payment notifications — all in one place.";
+
+/* ── Admin ── */
+"admin_user"                   = "Administrator";
+"admin_display_name"           = "RCC Admin";
+"admin_tab_home"               = "Home";
+"admin_tab_invoice"            = "Invoice";
+"admin_tab_payment"            = "Payment";
+"admin_year"                   = "Year";
+"admin_summary_title"          = "Summary";
+"admin_total_users"            = "Total users";
+"admin_total_paid_users"       = "Paid";
+"admin_total_unpaid_users"     = "Unpaid";
+"admin_paid_this_month"        = "Paid this month";
+"admin_no_paid_users"          = "No paid users for this month.";
+"admin_issue_all_users"        = "Issue invoice to all users";
+"admin_invoice_status_header"  = "Invoice status";
+"admin_status_no_invoice"      = "No invoice";
+"admin_status_paid"            = "Paid";
+"admin_status_issued_unpaid"   = "Issued · Unpaid";
+"admin_status_pending"         = "Pending";
+"admin_unpaid_section"         = "Unpaid this month";
+"admin_unpaid_for"             = "Unpaid ·";
+"admin_all_paid"               = "Everyone has paid for this month.";
+"admin_invoice_issued_title"   = "Invoices issued";
+"admin_invoice_issued_message" = "Monthly invoices have been issued for";
+
+/* ── Admin Manage Users ── */
+"admin_tab_manage_users"       = "Manage Users";
+"admin_manage_users_title"    = "Manage Users";
+"admin_manage_users_empty"    = "No users found.";
+"admin_search_users"         = "Search by name";
+"admin_manage_users_no_results" = "No matching users found.";
+"admin_profile"               = "Profile";
+"admin_name"                  = "Name";
+"admin_email"                 = "Email";
+"admin_payment_type"          = "Payment Type";
+"admin_full"                  = "Full";
+"admin_half"                  = "Half";
+"admin_edit_user"             = "Edit User";
+"admin_cancel"                = "Cancel";
+"admin_save"                  = "Save";
+"admin_delete_user_title"    = "Delete User";
+"admin_delete_user_message"  = "Are you sure you want to delete this user?";
+"admin_delete"                = "Delete";
+"admin_cancel_delete"        = "Cancel";
+"edit"                        = "Edit";
+"admin_invoice_no"             = "No";
+"admin_invoice_date"           = "Date";

@@ -10,31 +10,53 @@ import SwiftData
 
 @main
 struct Rcc_ProjectApp: App {
-//    var sharedModelContainer: ModelContainer = {
-//        let schema = Schema([
-//            Item.self,
-//        ])
-//        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-//
-//        do {
-//            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-//        } catch {
-//            fatalError("Could not create ModelContainer: \(error)")
-//        }
-//    }()
-    
-    init() {
-            // Force Light Mode for all windows
-            UIView.appearance().overrideUserInterfaceStyle = .light
-        }
 
+    @AppStorage("appTheme")  var appTheme:   String = "system"
+    @AppStorage("isLoggedIn") var isLoggedIn: Bool   = false
+    @AppStorage("userRole")   var userRole:   String = "user"
     @UIApplicationDelegateAdaptor(AppDelegate.self) var application
-    
+
+    @StateObject private var lm = LocalizationManager()
+
+    var preferredScheme: ColorScheme? {
+        switch appTheme {
+        case "light": return .light
+        case "dark":  return .dark
+        default:      return nil
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            Group {
+                if isLoggedIn {
+                    if userRole == "admin" {
+                        AdminTabView()
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal:   .move(edge: .leading).combined(with: .opacity)
+                            ))
+                    } else {
+                        ContentView()
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal:   .move(edge: .leading).combined(with: .opacity)
+                            ))
+                    }
+                } else {
+                    NavigationStack {
+                        LoginView()
+                    }
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .leading).combined(with: .opacity),
+                        removal:   .move(edge: .trailing).combined(with: .opacity)
+                    ))
+                }
+            }
+            .animation(.spring(response: 0.5, dampingFraction: 0.85), value: isLoggedIn)
+            .preferredColorScheme(preferredScheme)
+            .environmentObject(lm)
         }
-//        .modelContainer(sharedModelContainer)
     }
 }
 

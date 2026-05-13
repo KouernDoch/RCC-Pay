@@ -1,0 +1,155 @@
+/* ── ContentView ── */
+"daily_payment"      = "ការទូទាត់ប្រចាំថ្ងៃ";
+"see_all"            = "មើលទាំងអស់";
+"normal_user"        = "អ្នកប្រើប្រាស់ធម្មតា";
+
+/* ── NotificationView ── */
+"notifications"      = "ការជូនដំណឹង";
+"all"                = "ទាំងអស់";
+"unread"             = "មិនទាន់អាន";
+"monthly_bill"       = "វិក្កយបត្រប្រចាំខែ";
+"no_notifications"   = "គ្មានការជូនដំណឹង";
+"all_caught_up"      = "អ្នកបានអានទាំងអស់ហើយ!";
+"delete"             = "លុប";
+"mark_read"          = "អាន";
+
+/* ── CardViewMonthlyBill ── */
+"paid"               = "បង់រួច";
+"total_due"          = "សរុបត្រូវបង់";
+"remain"             = "នៅសល់";
+"pay_via_qr"         = "ទូទាត់តាម QR Code";
+
+/* ── ProfileView ── */
+"settings"           = "ការកំណត់";
+"preference"         = "ចំណូលចិត្ត";
+"password_security"  = "ពាក្យសម្ងាត់ & សុវត្ថិភាព";
+"notification_menu"  = "ការជូនដំណឹង";
+"language"           = "ភាសា";
+"about_us"           = "អំពីយើង";
+"theme"              = "រូបរាង";
+"sign_out"           = "ចេញពីប្រព័ន្ធ";
+"rcc_member"         = "សមាជិក RCC";
+
+/* ── ThemePickerSheet ── */
+"appearance"         = "រូបរាង";
+"light"              = "ភ្លឺ";
+"dark"               = "ងងឹត";
+"system"             = "ប្រព័ន្ធ";
+
+/* ── LoginView ── */
+"welcome_back"          = "សូមស្វាគមន៍";
+"login_subtitle"        = "ចូលក្នុងគណនីរបស់អ្នក";
+"username"              = "ឈ្មោះអ្នកប្រើ";
+"login"                 = "ចូល";
+"ph_username"           = "បញ្ចូលឈ្មោះអ្នកប្រើ";
+"ph_login_password"     = "បញ្ចូលពាក្យសម្ងាត់";
+"invalid_credentials"   = "ឈ្មោះអ្នកប្រើ ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ";
+"forgot_password"       = "ភ្លេចពាក្យសម្ងាត់?";
+
+/* ── PasswordSecurityView ── */
+"current_password"      = "ពាក្យសម្ងាត់បច្ចុប្បន្ន";
+"new_password"          = "ពាក្យសម្ងាត់ថ្មី";
+"confirm_password"      = "បញ្ជាក់ពាក្យសម្ងាត់ថ្មី";
+"save_changes"          = "រក្សាទុក";
+"password_too_short"    = "ពាក្យសម្ងាត់ត្រូវមានយ៉ាងតិច ៦ តួអក្សរ";
+"password_mismatch"     = "ពាក្យសម្ងាត់ថ្មីមិនត្រូវគ្នា";
+"password_incorrect"    = "ពាក្យសម្ងាត់បច្ចុប្បន្នមិនត្រឹមត្រូវ";
+"password_changed"      = "ការផ្លាស់ប្តូរពាក្យសម្ងាត់បានជោគជ័យ!";
+"password_strength"     = "កម្លាំងពាក្យសម្ងាត់";
+"strength_weak"         = "ខ្សោយ";
+"strength_medium"       = "មធ្យម";
+"strength_strong"       = "រឹងមាំ";
+"show"                  = "បង្ហាញ";
+"hide"                  = "លាក់";
+"ph_current_password"   = "បញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្នរបស់អ្នក";
+"ph_new_password"       = "យ៉ាងតិច ៦ តួអក្សរ";
+"ph_confirm_password"   = "បញ្ចូលពាក្យសម្ងាត់ថ្មីម្ដងទៀត";
+
+/* ── ForgotPasswordView ── */
+"fp_step1_title"        = "រកគណនី";
+"fp_step1_subtitle"     = "បញ្ចូលឈ្មោះអ្នកប្រើ ដើម្បីចាប់ផ្តើម";
+"fp_step2_title"        = "កំណត់ពាក្យសម្ងាត់ថ្មី";
+"fp_step2_subtitle"     = "បង្កើតពាក្យសម្ងាត់ថ្មីសម្រាប់គណនីរបស់អ្នក";
+"fp_success_title"      = "ពាក្យសម្ងាត់ត្រូវបានកំណត់!";
+"fp_success_subtitle"   = "ពាក្យសម្ងាត់របស់អ្នកត្រូវបានធ្វើបច្ចុប្បន្នភាពដោយជោគជ័យ។";
+"fp_account_not_found"  = "រកមិនឃើញគណនី។ សូមព្យាយាមម្តងទៀត។";
+"fp_passwords_match"    = "ពាក្យសម្ងាត់ត្រូវគ្នា";
+"find_account"          = "រកគណនី";
+"reset_password"        = "កំណត់ពាក្យសម្ងាត់";
+"back_to_login"         = "ត្រឡប់ទៅចូល";
+"back"                  = "ត្រឡប់";
+
+/* ── SignUpView ── */
+"su_title"              = "បង្កើតគណនី";
+"su_subtitle"           = "បំពេញព័ត៌មានខាងក្រោម";
+"ph_email"              = "បញ្ចូលអ៊ីមែលរបស់អ្នក";
+"gender"                = "ភេទ";
+"male"                  = "ប្រុស";
+"female"                = "ស្រី";
+"other"                 = "ផ្សេង";
+"create_account"        = "បង្កើតគណនី";
+"have_account"          = "មានគណនីរួចហើយ?";
+"dont_have_account"     = "មិនទាន់មានគណនី?";
+"sign_up"               = "ចុះឈ្មោះ";
+"su_username_short"     = "ឈ្មោះអ្នកប្រើត្រូវមានយ៉ាងតិច ៣ តួអក្សរ";
+"su_select_gender"      = "សូមជ្រើសរើសភេទ";
+"email_invalid"         = "សូមបញ្ចូលអ៊ីមែលត្រឹមត្រូវ";
+"su_success_title"      = "គណនីត្រូវបានបង្កើត!";
+"su_success_subtitle"   = "គណនីរបស់អ្នកត្រូវបានបង្កើតដោយជោគជ័យ។\nអ្នកអាចចូលប្រព័ន្ធឥឡូវនេះ។";
+"go_to_login"           = "ទៅកាន់ការចូល";
+
+/* ── AboutUsView ── */
+"creator"            = "អ្នកបង្កើត";
+"about_the_app"      = "អំពីកម្មវិធី";
+"organization"       = "អង្គភាព";
+"email"              = "អ៊ីមែល";
+"version"            = "កំណែ";
+"rcc_pay_description" = "RCC Pay គឺជាកម្មវិធីគ្រប់គ្រងការទូទាត់បន្ទប់ ត្រូវបានរចនាឡើងដើម្បីសម្រួលការតាមដានវិក្កយបត្រប្រចាំខែ និងការទូទាត់សម្រាប់អ្នករស់នៅក្នុងបន្ទប់ RCC។ អ្នកប្រើប្រាស់អាចមើលប្រវត្តិការបង់ប្រាក់ ទូទាត់វិក្កយបត្រប្រចាំខែ និងទទួលការជូនដំណឹងភ្លាមៗ — ទាំងអស់នៅកន្លែងតែមួយ។";
+
+/* ── Admin ── */
+"admin_user"                   = "អ្នកគ្រប់គ្រង";
+"admin_display_name"           = "RCC Admin";
+"admin_tab_home"               = "ទំព័រដើម";
+"admin_tab_invoice"            = "វិក្កយបត្រ";
+"admin_tab_payment"            = "ការទូទាត់";
+"admin_year"                   = "ឆ្នាំ";
+"admin_summary_title"          = "សង្ខេប";
+"admin_total_users"            = "អ្នកប្រើប្រាស់សរុប";
+"admin_total_paid_users"       = "បានបង់";
+"admin_total_unpaid_users"     = "មិនទាន់បង់";
+"admin_paid_this_month"        = "បានបង់ខែនេះ";
+"admin_no_paid_users"          = "គ្មានអ្នកបង់សម្រាប់ខែនេះ។";
+"admin_issue_all_users"        = "ចេញវិក្កយបត្រជូនអ្នកប្រើទាំងអស់";
+"admin_invoice_status_header"  = "ស្ថានភាពវិក្កយបត្រ";
+"admin_status_no_invoice"      = "គ្មានវិក្កយបត្រ";
+"admin_status_paid"            = "បានបង់";
+"admin_status_issued_unpaid"   = "បានចេញ · មិនទាន់បង់";
+"admin_status_pending"         = "កំពុងរង់ចាំ";
+"admin_unpaid_section"         = "មិនទាន់បង់ខែនេះ";
+"admin_unpaid_for"             = "មិនទាន់បង់ ·";
+"admin_all_paid"               = "គ្រប់គ្នាបានបង់សម្រាប់ខែនេះ។";
+"admin_invoice_issued_title"   = "បានចេញវិក្កយបត្រ";
+"admin_invoice_issued_message" = "បានចេញវិក្កយបត្រប្រចាំខែសម្រាប់";
+
+/* ── Admin Manage Users ── */
+"admin_tab_manage_users"       = "គ្រប់គ្រងអ្នកប្រើប្រាស់";
+"admin_manage_users_title"    = "គ្រប់គ្រងអ្នកប្រើប្រាស់";
+"admin_manage_users_empty"    = "រកមិនឃើញអ្នកប្រើប្រាស់។";
+"admin_search_users"          = "ស្វែងរកតាមឈ្មោះ";
+"admin_manage_users_no_results" = "រកមិនឃើញលទ្ធផលសម្រាប់ការស្វែងរក។";
+"admin_profile"               = "រូបប្រវត្តិ";
+"admin_name"                  = "ឈ្មោះ";
+"admin_email"                 = "អ៊ីមែល";
+"admin_payment_type"          = "ប្រភេទការទូទាត់";
+"admin_full"                  = "ពេញ";
+"admin_half"                  = "ពាក់កណ្តាល";
+"admin_edit_user"             = "កែសម្រួលអ្នកប្រើប្រាស់";
+"admin_cancel"                = "បោះបង់";
+"admin_save"                  = "រក្សាទុក";
+"admin_delete_user_title"    = "លុបអ្នកប្រើប្រាស់";
+"admin_delete_user_message"  = "តើអ្នកប្រាកដថាចង់លុបអ្នកប្រើប្រាស់នេះ?";
+"admin_delete"                = "លុប";
+"admin_cancel_delete"        = "បោះបង់";
+"edit"                        = "កែសម្រួល";
+"admin_invoice_no"             = "លេខ";
+"admin_invoice_date"           = "កាលបរិច្ឆេទ";

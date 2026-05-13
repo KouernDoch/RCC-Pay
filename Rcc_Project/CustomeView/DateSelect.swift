@@ -72,17 +72,26 @@ struct MonthCard: View {
     let geometry: GeometryProxy
     let onTap: () -> Void
     @Environment(\.colorScheme) var colorScheme: ColorScheme
-    
+
+    // Selected card bg is Color.primary (white in dark, black in light).
+    // Text must contrast against that background.
+    private var selectedForeground: Color {
+        if isSelected {
+            return colorScheme == .dark ? .black : .white
+        }
+        return colorScheme == .dark ? .white : .black
+    }
+
     var body: some View {
         //        Text("Hello")
         Button(action: onTap){
             VStackLayout(spacing: cardHeight * 0.05){
                 Text(String(format: "%02d", monthNumber))
                     .font(.system(size: cardWidth * 0.35))
-                    .foregroundStyle(isSelected ? .white : (colorScheme == .dark ? .white : .black))
+                    .foregroundStyle(selectedForeground)
                 Text(monthName)
                     .font(.system(size: cardWidth * 0.25, weight: .semibold))
-                    .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white.opacity(0.9) : .black))
+                    .foregroundStyle(selectedForeground)
             }
             .frame(width: cardWidth, height: cardHeight)
             .background(
