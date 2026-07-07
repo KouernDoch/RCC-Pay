@@ -117,6 +117,54 @@ struct ProfileSectionCard<Content: View>: View {
     }
 }
 
+// MARK: - Amount Edit Row
+
+struct ProfileAmountEditRow: View {
+    let title: String
+    let icon: String
+    let iconBg: Color
+    @Binding var amount: String
+    var showDivider: Bool = true
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9)
+                        .fill(iconBg)
+                        .frame(width: 36, height: 36)
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                }
+
+                Text(title)
+                    .font(.system(size: 15))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Text("$")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    TextField("0.00", text: $amount)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 72)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+
+            if showDivider {
+                Divider().padding(.leading, 66)
+            }
+        }
+    }
+}
+
 // MARK: - Theme Picker Sheet
 
 struct ThemePickerSheet: View {
@@ -384,6 +432,7 @@ struct LanguagePickerSheet: View {
 struct ProfileView: View {
 
     @EnvironmentObject private var lm: LocalizationManager
+    @EnvironmentObject private var session: SessionStore
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("appTheme")             var appTheme:             String = "system"
@@ -396,6 +445,13 @@ struct ProfileView: View {
     @State private var showThemePicker        = false
     @State private var showLanguagePicker     = false
     @State private var showNotifDeniedAlert   = false
+
+    @AppStorage(AdminPaymentSettings.fullAmountKey) private var storedFullAmount: String = AdminPaymentSettings.defaultFull
+    @AppStorage(AdminPaymentSettings.halfAmountKey) private var storedHalfAmount: String = AdminPaymentSettings.defaultHalf
+    @State private var draftFullAmount: String = AdminPaymentSettings.defaultFull
+    @State private var draftHalfAmount: String = AdminPaymentSettings.defaultHalf
+    @State private var showPaymentSavedAlert = false
+    @State private var showPaymentInvalidAlert = false
 
     private let blue = Color(red: 0.22, green: 0.50, blue: 0.98)
 
@@ -422,6 +478,9 @@ struct ProfileView: View {
                 VStack(spacing: 24) {
                     profileCard
                     settingsSection
+                    if userRole == "admin" {
+                        adminPaymentSettingsSection
+                    }
                     preferenceSection
                     signOutButton
                 }
@@ -440,6 +499,7 @@ struct ProfileView: View {
         }
         .onAppear {
             Task { await syncNotificationStatus() }
+            loadPaymentAmountDrafts()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -467,6 +527,14 @@ struct ProfileView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Notifications are turned off in iOS Settings. Tap \"Open Settings\" to enable them.")
+        }
+        .alert(lm["admin_payment_amounts_saved"], isPresented: $showPaymentSavedAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(lm["admin_payment_amounts_saved_message"])
+        }
+        .alert(lm["admin_payment_amounts_invalid"], isPresented: $showPaymentInvalidAlert) {
+            Button("OK", role: .cancel) { }
         }
     }
 
@@ -559,7 +627,7 @@ struct ProfileView: View {
                 }
                 .buttonStyle(.plain)
 
-                Text("Kouern Doch")
+                Text(session.displayName.isEmpty ? "RCC Member" : session.displayName)
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.white)
 
@@ -634,6 +702,67 @@ struct ProfileView: View {
         }
     }
 
+    // MARK: - Admin Payment Settings
+
+    private var adminPaymentSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(lm["admin_payment_amounts"].uppercased())
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.secondary)
+                .kerning(1)
+                .padding(.horizontal, 20)
+
+            ProfileSectionCard {
+                ProfileAmountEditRow(
+                    title: lm["admin_full_amount"],
+                    icon: "dollarsign.circle.fill",
+                    iconBg: Color(red: 0.18, green: 0.75, blue: 0.48),
+                    amount: $draftFullAmount,
+                    showDivider: true
+                )
+
+                ProfileAmountEditRow(
+                    title: lm["admin_half_amount"],
+                    icon: "dollarsign.circle.fill",
+                    iconBg: Color(red: 1.00, green: 0.60, blue: 0.15),
+                    amount: $draftHalfAmount,
+                    showDivider: true
+                )
+
+                Button {
+                    savePaymentAmounts()
+                } label: {
+                    HStack {
+                        Spacer()
+                        Text(lm["admin_save_payment_amounts"])
+                            .font(.system(size: 15, weight: .semibold))
+                        Spacer()
+                    }
+                    .padding(.vertical, 14)
+                    .foregroundColor(blue)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func loadPaymentAmountDrafts() {
+        draftFullAmount = storedFullAmount
+        draftHalfAmount = storedHalfAmount
+    }
+
+    private func savePaymentAmounts() {
+        if AdminPaymentSettings.save(full: draftFullAmount, half: draftHalfAmount) {
+            storedFullAmount = AdminPaymentSettings.fullAmountString
+            storedHalfAmount = AdminPaymentSettings.halfAmountString
+            draftFullAmount = storedFullAmount
+            draftHalfAmount = storedHalfAmount
+            showPaymentSavedAlert = true
+        } else {
+            showPaymentInvalidAlert = true
+        }
+    }
+
     // MARK: - Preference Section
 
     private var preferenceSection: some View {
@@ -669,13 +798,12 @@ struct ProfileView: View {
 
     // MARK: - Sign Out
 
-    @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @Environment(\.colorScheme) private var colorScheme
 
     private var signOutButton: some View {
         Button {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                isLoggedIn = false
+                session.signOut()
             }
         } label: {
             HStack(spacing: 10) {
@@ -710,5 +838,6 @@ struct ProfileView: View {
     NavigationStack {
         ProfileView()
             .environmentObject(LocalizationManager())
+            .environmentObject(SessionStore())
     }
 }

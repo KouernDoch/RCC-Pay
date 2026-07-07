@@ -127,7 +127,7 @@
 "admin_invoice_filter_empty"   = "No residents match this filter for the selected month.";
 "admin_status_no_invoice"      = "No invoice";
 "admin_status_paid"            = "Paid";
-"admin_status_issued_unpaid"   = "Issued · Unpaid";
+"admin_status_issued_unpaid"   = "Unpaid";
 "admin_status_pending"         = "Pending";
 "admin_unpaid_section"         = "Unpaid this month";
 "admin_unpaid_for"             = "Unpaid ·";
@@ -157,3 +157,17 @@
 "edit"                        = "Edit";
 "admin_invoice_no"             = "No";
 "admin_invoice_date"           = "Date";
+"admin_payment_amounts"        = "Payment Amounts";
+"admin_full_amount"            = "Full Payment";
+"admin_half_amount"            = "Half Payment";
+"admin_save_payment_amounts"   = "Save Payment Amounts";
+"admin_payment_amounts_saved"  = "Payment amounts saved";
+"admin_payment_amounts_saved_message" = "Full and half payment amounts have been updated.";
+"admin_payment_amounts_invalid" = "Enter valid amounts greater than zero.";
+
+/* Backend integration additions */
+"unpaid"                       = "Unpaid";
+"no_payments"                  = "No payments yet";
+"loading"                      = "Loading…";
+"retry"                        = "Retry";
+"mark_all_read"                = "Mark all read";

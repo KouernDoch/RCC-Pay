@@ -11,9 +11,13 @@ import UIKit
 
 struct PopUpViewQRCode: View {
     @Binding var isShowingSheet: Bool
+    /// Amount still owed for the selected month; shown on the confirm button.
+    var payAmount: Double = 0
+    /// Called when the user confirms they've paid. When nil, no confirm button is shown.
+    var onConfirmPaid: (() -> Void)? = nil
     @State private var shareImage : UIImage?
     @State private var didCallOnAppearForTheFirstTime = false
-    
+
     var body: some View {
         ZStack {
             Color.black.opacity(1)
@@ -59,6 +63,26 @@ struct PopUpViewQRCode: View {
                 makeBody()
                 if let shareImage = shareImage{
                     ShareQRcode(image: shareImage)
+                }
+
+                if let onConfirmPaid, payAmount > 0 {
+                    Button {
+                        onConfirmPaid()
+                        isShowingSheet = false
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("I've paid $\(String(format: "%.2f", payAmount))")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color(red: 0.18, green: 0.75, blue: 0.48)))
+                    }
+                    .padding(.top, 18)
                 }
                 Spacer()
             }

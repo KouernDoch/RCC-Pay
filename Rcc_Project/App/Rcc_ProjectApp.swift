@@ -12,11 +12,10 @@ import SwiftData
 struct Rcc_ProjectApp: App {
 
     @AppStorage("appTheme")  var appTheme:   String = "system"
-    @AppStorage("isLoggedIn") var isLoggedIn: Bool   = false
-    @AppStorage("userRole")   var userRole:   String = "user"
     @UIApplicationDelegateAdaptor(AppDelegate.self) var application
 
     @StateObject private var lm = LocalizationManager()
+    @StateObject private var session = SessionStore()
 
     var preferredScheme: ColorScheme? {
         switch appTheme {
@@ -29,8 +28,10 @@ struct Rcc_ProjectApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if isLoggedIn {
-                    if userRole == "admin" {
+                if session.isRestoring {
+                    LaunchSplashView()
+                } else if session.isLoggedIn {
+                    if session.isAdmin {
                         AdminTabView()
                             .transition(.asymmetric(
                                 insertion: .move(edge: .trailing).combined(with: .opacity),
@@ -53,9 +54,31 @@ struct Rcc_ProjectApp: App {
                     ))
                 }
             }
-            .animation(.spring(response: 0.5, dampingFraction: 0.85), value: isLoggedIn)
+            .animation(.spring(response: 0.5, dampingFraction: 0.85), value: session.isLoggedIn)
+            .animation(.easeInOut(duration: 0.3), value: session.isRestoring)
             .preferredColorScheme(preferredScheme)
             .environmentObject(lm)
+            .environmentObject(session)
+            .task { await session.restoreSession() }
+        }
+    }
+}
+
+/// Lightweight splash shown while a persisted session token is validated on launch.
+private struct LaunchSplashView: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(red: 0.10, green: 0.30, blue: 0.88),
+                         Color(red: 0.22, green: 0.52, blue: 1.0)],
+                startPoint: .topLeading, endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+            VStack(spacing: 18) {
+                Image(systemName: "creditcard.fill")
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(.white)
+                ProgressView().tint(.white)
+            }
         }
     }
 }

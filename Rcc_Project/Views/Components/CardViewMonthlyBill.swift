@@ -16,6 +16,15 @@ struct CardViewMonthlyBill: View {
     @Binding var selectedmonth: String
     @Binding var selectedYear: Int
 
+    // Real figures from the backend monthly summary.
+    var totalDue: String = "0.00"
+    var remain: String = "0.00"
+    var paid: String = "0.00"
+    var isFullyPaid: Bool = false
+    var remainingAmount: Double = 0
+    var isPaying: Bool = false
+    var onConfirmPaid: () -> Void = {}
+
     @State private var showQR = false
     @EnvironmentObject private var lm: LocalizationManager
     @Environment(\.colorScheme) private var colorScheme
@@ -43,16 +52,16 @@ struct CardViewMonthlyBill: View {
                 Spacer()
 
                 HStack(spacing: 8) {
-                    // Paid badge
+                    // Paid / Unpaid badge (reflects the current month's balance)
                     HStack(spacing: 4) {
-                        Circle().fill(mint).frame(width: 6, height: 6)
-                        Text(lm["paid"])
+                        Circle().fill(isFullyPaid ? mint : amber).frame(width: 6, height: 6)
+                        Text(isFullyPaid ? lm["paid"] : lm["unpaid"])
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(mint)
+                            .foregroundColor(isFullyPaid ? mint : amber)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Capsule().fill(mint.opacity(colorScheme == .dark ? 0.2 : 0.1)))
+                    .background(Capsule().fill((isFullyPaid ? mint : amber).opacity(colorScheme == .dark ? 0.2 : 0.1)))
 
                     // Year picker
                     Menu {
@@ -79,11 +88,11 @@ struct CardViewMonthlyBill: View {
 
             // ── Stats grid ───────────────────────────────────
             HStack(spacing: 0) {
-                statItem(label: lm["total_due"], value: "38.00", color: blue)
+                statItem(label: lm["total_due"], value: totalDue, color: blue)
                 stripDivider
-                statItem(label: lm["remain"],    value: "0.00",  color: amber)
+                statItem(label: lm["remain"],    value: remain,   color: amber)
                 stripDivider
-                statItem(label: lm["paid"],      value: "38.00", color: mint)
+                statItem(label: lm["paid"],      value: paid,     color: mint)
             }
             .padding(.vertical, 16)
 
@@ -91,9 +100,13 @@ struct CardViewMonthlyBill: View {
            
             Button { showQR = true } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "qrcode.viewfinder")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text(lm["pay_via_qr"])
+                    if isPaying {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: "qrcode.viewfinder")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    Text(isFullyPaid ? lm["paid"] : lm["pay_via_qr"])
                         .font(.system(size: 14, weight: .semibold))
                 }
                 .foregroundColor(.white)
@@ -101,13 +114,17 @@ struct CardViewMonthlyBill: View {
                 .padding(.vertical, 13)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(blue)
+                        .fill(isFullyPaid ? mint : blue)
                 )
             }
+            .disabled(isFullyPaid || isPaying)
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
             .fullScreenCover(isPresented: $showQR){
-                PopUpViewQRCode(isShowingSheet: $showQR)
+                PopUpViewQRCode(
+                    isShowingSheet: $showQR,
+                    payAmount: remainingAmount,
+                    onConfirmPaid: remainingAmount > 0 ? onConfirmPaid : nil)
             }
         }
         .background(Color(.systemBackground))

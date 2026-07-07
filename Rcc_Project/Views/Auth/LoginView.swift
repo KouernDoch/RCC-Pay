@@ -27,13 +27,10 @@ private struct BottomWave: Shape {
 struct LoginView: View {
 
     @EnvironmentObject private var lm: LocalizationManager
+    @EnvironmentObject private var session: SessionStore
     @Environment(\.colorScheme) private var scheme
 
-    @AppStorage("isLoggedIn")      private var isLoggedIn:     Bool   = false
-    @AppStorage("rccUserPassword") private var storedPassword: String = "123"
-    @AppStorage("userRole")        private var userRole:       String = "user"
-
-    @State private var username           = ""
+    @State private var username           = ""   // holds the email address
     @State private var password           = ""
     @State private var showPassword       = false
     @State private var errorMsg           = ""
@@ -47,8 +44,6 @@ struct LoginView: View {
     private enum LoginField { case username, password }
 
     private var isKeyboardUp: Bool { focusedField != nil }
-    private let validUserUsername  = "doch"
-    private let validAdminUsername = "admin"
 
     // Use stable screen height – unaffected by keyboard safe-area changes
     private let screenH = UIScreen.main.bounds.height
@@ -342,8 +337,8 @@ struct LoginView: View {
 
     private var groupedInputCard: some View {
         VStack(spacing: 0) {
-            fieldRow(icon: "person.fill",
-                     placeholder: lm["ph_username"],
+            fieldRow(icon: "envelope.fill",
+                     placeholder: lm["ph_email"],
                      text: $username,
                      isSecure: false,
                      field: .username)
@@ -409,6 +404,8 @@ struct LoginView: View {
             .font(.system(size: 15))
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
+            .keyboardType(field == .username ? .emailAddress : .default)
+            .textContentType(field == .username ? .username : .password)
             .submitLabel(field == .username ? .next : .done)
             .onSubmit {
                 if field == .username { focusedField = .password }
@@ -496,17 +493,15 @@ struct LoginView: View {
         withAnimation { errorMsg = "" }
         focusedField = nil          // Dismiss keyboard immediately on tap
         isLoading = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
-            isLoading = false
-            let trimmed = username.trimmingCharacters(in: .whitespaces).lowercased()
-            if (trimmed == validUserUsername || trimmed == validAdminUsername) && password == storedPassword {
-                userRole = trimmed == validAdminUsername ? "admin" : "user"
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    isLoggedIn = true
-                }
-            } else {
+        Task {
+            do {
+                try await session.login(email: username, password: password)
+                // Routing is driven by SessionStore; no local navigation needed.
+            } catch {
+                isLoading = false
+                let message = (error as? APIError)?.errorDescription ?? lm["invalid_credentials"]
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
-                    errorMsg = lm["invalid_credentials"]
+                    errorMsg = message
                 }
                 triggerShake()
             }
@@ -537,4 +532,5 @@ private struct PressScaleButtonStyle: ButtonStyle {
 #Preview {
     LoginView()
         .environmentObject(LocalizationManager())
+        .environmentObject(SessionStore())
 }

@@ -13,20 +13,50 @@ import Foundation
 struct AdminTabView: View {
 
     @EnvironmentObject private var lm: LocalizationManager
+    @EnvironmentObject private var session: SessionStore
     @Environment(\.colorScheme) private var colorScheme
 
     @StateObject private var viewModel = AdminViewModel()
 
     private let blue = Color(red: 0.22, green: 0.50, blue: 0.98)
 
+    // Premium palette
+    private let accent = Color(red: 0.220, green: 0.188, blue: 0.765)   // #3830C3
+    private let bgTop = Color(red: 0.973, green: 0.976, blue: 1.0)      // #F8F9FF
+    private let bgBottom = Color(red: 0.933, green: 0.949, blue: 1.0)   // #EEF2FF
+
+    private var tabItems: [GlassTabItem] {
+        [
+            GlassTabItem(tag: 0, title: lm["admin_tab_home"], icon: "house", filled: "house.fill"),
+            GlassTabItem(tag: 1, title: lm["admin_tab_invoice"], icon: "doc.text", filled: "doc.text.fill"),
+            GlassTabItem(tag: 2, title: lm["admin_tab_payment"], icon: "creditcard", filled: "creditcard.fill"),
+            GlassTabItem(tag: 3, title: lm["admin_tab_manage_users"], icon: "person.3", filled: "person.3.fill")
+        ]
+    }
+
+    @ViewBuilder
+    private var adminTabContent: some View {
+        switch viewModel.selectedAdminTab {
+        case 0: adminHomeTab
+        case 1: adminInvoiceTab
+        case 2: adminPaymentTab
+        default: adminManageUsersTab
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemGroupedBackground).ignoresSafeArea()
+                LinearGradient(
+                    colors: [bgTop, bgBottom],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
 
                 VStack(alignment: .leading, spacing: 0) {
                     DashboardChromeView(
-                        displayName: lm["admin_display_name"],
+                        displayName: session.displayName.isEmpty ? lm["admin_display_name"] : session.displayName,
                         roleSubtitle: lm["admin_user"],
                         showMonthSelector: viewModel.selectedAdminTab != 3,
                         onMonthSelected: { month in
@@ -34,28 +64,18 @@ struct AdminTabView: View {
                         }
                     )
 
-//                    HStack {
-//                        Text(selectedmonth.isEmpty ? "—" : selectedmonth)
-//                            .font(.system(size: 14, weight: .semibold))
-//                            .foregroundStyle(.primary)
-//                        Spacer()
-//                    }
-//                    .padding(.horizontal)
-//                    .padding(.vertical, 6)
-
-                    TabView(selection: $viewModel.selectedAdminTab) {
-                        adminHomeTab
-                            .tabItem { Label(lm["admin_tab_home"], systemImage: "house.fill") }
-                            .tag(0)
-                        adminInvoiceTab
-                            .tabItem { Label(lm["admin_tab_invoice"], systemImage: "doc.text.fill") }
-                            .tag(1)
-                        adminPaymentTab
-                            .tabItem { Label(lm["admin_tab_payment"], systemImage: "creditcard.fill") }
-                            .tag(2)
-                        adminManageUsersTab
-                            .tabItem { Label(lm["admin_tab_manage_users"], systemImage: "person.3.fill") }
-                            .tag(3)
+                    ZStack {
+                        adminTabContent
+                            .id(viewModel.selectedAdminTab)
+                            .transition(.opacity)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .animation(.easeInOut(duration: 0.28), value: viewModel.selectedAdminTab)
+                    .safeAreaInset(edge: .bottom) {
+                        LiquidGlassTabBar(
+                            selection: $viewModel.selectedAdminTab,
+                            items: tabItems
+                        )
                     }
                 }
             }
@@ -65,6 +85,7 @@ struct AdminTabView: View {
         .onAppear {
             viewModel.ensureSelectedMonthIfNeeded()
         }
+        .task { await viewModel.loadAll() }
         .alert(lm["admin_invoice_issued_title"], isPresented: $viewModel.showIssuedAlert) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -97,7 +118,7 @@ struct AdminTabView: View {
 
     private var adminHomeTab: some View {
         ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.clear.ignoresSafeArea()
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
                     adminSummaryCard
@@ -291,7 +312,7 @@ struct AdminTabView: View {
 
     private var adminInvoiceTab: some View {
         ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.clear.ignoresSafeArea()
 
            
                 VStack(alignment: .leading, spacing: 14) {
@@ -371,7 +392,10 @@ struct AdminTabView: View {
                             ForEach(viewModel.residentsForInvoiceList) { r in
                                 AdminInvoiceCard(
                                     resident: r,
-                                    record: r.months[viewModel.currentKey]
+                                    record: r.months[viewModel.currentKey],
+                                    onStatusSelected: { status in
+                                        viewModel.updateResidentInvoiceStatus(r, to: status)
+                                    }
                                 )
                             }
                         }
@@ -405,7 +429,7 @@ struct AdminTabView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(r.name)
                     .font(.system(size: 14, weight: .semibold))
-                Text("$\(r.defaultDue)")
+                Text("$\(AdminPaymentSettings.formattedAmount(for: r.defaultPaymentType))")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
@@ -422,7 +446,7 @@ struct AdminTabView: View {
 
     private var adminPaymentTab: some View {
         ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.clear.ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
@@ -449,10 +473,11 @@ struct AdminTabView: View {
                     } else {
                         VStack(spacing: 8) {
                             ForEach(viewModel.unpaidResidents) { r in
-                                let due = Double(r.defaultDue) ?? 0.0
                                 let rec = r.months[viewModel.currentKey]
-                                let invoiceAmountValue = rec?.invoiceAmount ?? ((r.defaultPaymentType == .half) ? (due / 2.0) : due)
-                                let invoiceAmountText = String(format: "%.2f", invoiceAmountValue)
+                                let invoiceAmountText: String = {
+                                    guard let amount = rec?.invoiceAmount else { return "-" }
+                                    return String(format: "%.2f", amount)
+                                }()
                                 CardPayment(
                                     name: r.name,
                                     image: r.image,
@@ -472,7 +497,7 @@ struct AdminTabView: View {
 
     private var adminManageUsersTab: some View {
         ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.clear.ignoresSafeArea()
 
             
                 VStack(spacing: 0) {
@@ -673,6 +698,7 @@ struct AdminTabView: View {
 #Preview {
     AdminTabView()
         .environmentObject(LocalizationManager())
+        .environmentObject(SessionStore())
 }
 
 // MARK: - Edit Sheet
@@ -737,5 +763,136 @@ private struct AdminEditUserSheetView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Liquid Glass Tab Bar
+
+struct GlassTabItem: Identifiable {
+    let tag: Int
+    let title: String
+    let icon: String
+    let filled: String
+    var id: Int { tag }
+}
+
+private struct LiquidGlassTabBar: View {
+
+    @Binding var selection: Int
+    let items: [GlassTabItem]
+
+    @Namespace private var pillNamespace
+
+    private let accent = Color(red: 0.220, green: 0.188, blue: 0.765) // #3830C3
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(items) { item in
+                tabButton(for: item)
+            }
+        }
+        .padding(6)
+        .frame(height: 72)
+        .background(glassSurface)
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+    }
+
+    // MARK: Glass surface
+
+    private var glassSurface: some View {
+        RoundedRectangle(cornerRadius: 32, style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                // Soft light refraction highlight
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.55), Color.white.opacity(0.08)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .blendMode(.overlay)
+            )
+            .overlay(
+                // Semi-transparent white glass border
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.60),
+                                Color.white.opacity(0.20),
+                                Color.white.opacity(0.35)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            // Layered depth
+            .shadow(color: accent.opacity(0.18), radius: 24, x: 0, y: 14)
+            .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
+    }
+
+    // MARK: Tab button
+
+    private func tabButton(for item: GlassTabItem) -> some View {
+        let isSelected = selection == item.tag
+
+        return Button {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
+                selection = item.tag
+            }
+        } label: {
+            ZStack {
+                if isSelected {
+                    // Glowing pill-shaped indicator
+                    Capsule(style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [accent, accent.opacity(0.82)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.35), Color.clear],
+                                        startPoint: .top,
+                                        endPoint: .center
+                                    )
+                                )
+                        )
+                        .shadow(color: accent.opacity(0.45), radius: 12, x: 0, y: 6)
+                        .matchedGeometryEffect(id: "pill", in: pillNamespace)
+                }
+
+                HStack(spacing: 7) {
+                    Image(systemName: isSelected ? item.filled : item.icon)
+                        .font(.system(size: 17, weight: .semibold))
+                        .scaleEffect(isSelected ? 1.1 : 1.0)
+                        .foregroundStyle(isSelected ? Color.white : accent.opacity(0.60))
+
+                    if isSelected {
+                        Text(item.title)
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .transition(.opacity.combined(with: .scale))
+                    }
+                }
+                .padding(.horizontal, isSelected ? 16 : 0)
+            }
+            .frame(maxWidth: isSelected ? .infinity : 54)
+            .frame(height: 52)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }

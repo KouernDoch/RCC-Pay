@@ -127,7 +127,7 @@
 "admin_invoice_filter_empty"   = "គ្មានអ្នករស់នៅត្រូវនឹងតម្រងនេះសម្រាប់ខែដែលបានជ្រើស។";
 "admin_status_no_invoice"      = "គ្មានវិក្កយបត្រ";
 "admin_status_paid"            = "បានបង់";
-"admin_status_issued_unpaid"   = "បានចេញ · មិនទាន់បង់";
+"admin_status_issued_unpaid"   = "មិនទាន់បង់";
 "admin_status_pending"         = "កំពុងរង់ចាំ";
 "admin_unpaid_section"         = "មិនទាន់បង់ខែនេះ";
 "admin_unpaid_for"             = "មិនទាន់បង់ ·";
@@ -157,3 +157,17 @@
 "edit"                        = "កែសម្រួល";
 "admin_invoice_no"             = "លេខ";
 "admin_invoice_date"           = "កាលបរិច្ឆេទ";
+"admin_payment_amounts"        = "ចំនួនទឹកប្រាក់";
+"admin_full_amount"            = "ការទូទាត់ពេញ";
+"admin_half_amount"            = "ការទូទាត់ពាក់កណ្តាល";
+"admin_save_payment_amounts"   = "រក្សាទុកចំនួនទឹកប្រាក់";
+"admin_payment_amounts_saved"  = "បានរក្សាទុកចំនួនទឹកប្រាក់";
+"admin_payment_amounts_saved_message" = "បានធ្វើបច្ចុប្បន្នភាពចំនួនទឹកប្រាក់ពេញ និងពាក់កណ្តាល។";
+"admin_payment_amounts_invalid" = "សូមបញ្ចូលចំនួនទឹកប្រាក់ដែលត្រឹមត្រូវ និងធំជាងសូន្យ។";
+
+/* Backend integration additions */
+"unpaid"                       = "មិនទាន់បង់";
+"no_payments"                  = "មិនទាន់មានការបង់ប្រាក់";
+"loading"                      = "កំពុងផ្ទុក…";
+"retry"                        = "ព្យាយាមម្តងទៀត";
+"mark_all_read"                = "សម្គាល់ថាបានអានទាំងអស់";

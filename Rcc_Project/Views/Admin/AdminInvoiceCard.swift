@@ -11,6 +11,7 @@ struct AdminInvoiceCard: View {
 
     let resident: AdminResident
     let record: AdminResidentMonthRecord?
+    var onStatusSelected: ((AdminInvoiceStatus) -> Void)? = nil
 
     // MARK: - Computed helpers
 
@@ -18,16 +19,34 @@ struct AdminInvoiceCard: View {
         resident.email.isEmpty ? "user@example.com" : resident.email
     }
 
+    private var currentStatus: AdminInvoiceStatus {
+        record?.invoiceStatus ?? .pending
+    }
+
+    private func statusLabel(_ status: AdminInvoiceStatus) -> String {
+        switch status {
+        case .pending: return lm["admin_status_pending"]
+        case .issuedUnpaid: return lm["admin_status_issued_unpaid"]
+        case .paid: return lm["admin_status_paid"]
+        }
+    }
+
+    private func statusColor(_ status: AdminInvoiceStatus) -> Color {
+        switch status {
+        case .pending: return .gray
+        case .issuedUnpaid: return Color(red: 1.00, green: 0.60, blue: 0.15)
+        case .paid: return Color(red: 0.18, green: 0.75, blue: 0.48)
+        }
+    }
+
     private var statusInfo: (text: String, color: Color) {
-        guard let record else { return (lm["admin_status_pending"], .gray) }
-        if record.isPaid      { return (lm["admin_status_paid"],            Color(red: 0.18, green: 0.75, blue: 0.48)) }
-        if record.invoiceIssued { return (lm["admin_total_unpaid_users"],   Color(red: 1.00, green: 0.60, blue: 0.15)) }
-        return (lm["admin_status_pending"], .gray)
+        let status = currentStatus
+        return (statusLabel(status), statusColor(status))
     }
 
     private var amountText: String {
-        let raw = record?.invoiceAmount ?? Double(resident.defaultDue) ?? 0.0
-        return String(format: "%.2f", raw)
+        guard let record, let amount = record.invoiceAmount else { return "-" }
+        return String(format: "%.2f", amount)
     }
 
     private var noText: String   { record?.invoiceNumber ?? "-" }
@@ -63,18 +82,7 @@ struct AdminInvoiceCard: View {
 
                 Spacer()
 
-                // Status badge (matches CardViewMonthlyBill capsule style)
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(statusInfo.color)
-                        .frame(width: 6, height: 6)
-                    Text(statusInfo.text)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(statusInfo.color)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(statusInfo.color.opacity(colorScheme == .dark ? 0.20 : 0.10)))
+                statusBadge
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
@@ -113,6 +121,51 @@ struct AdminInvoiceCard: View {
     }
 
     // MARK: - Subviews
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        let isStatusEditable = currentStatus != .pending
+
+        let badge = HStack(spacing: 5) {
+            Circle()
+                .fill(statusInfo.color)
+                .frame(width: 6, height: 6)
+            Text(statusInfo.text)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(statusInfo.color)
+            if onStatusSelected != nil, isStatusEditable {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(statusInfo.color.opacity(0.8))
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(statusInfo.color.opacity(colorScheme == .dark ? 0.20 : 0.10)))
+
+        if let onStatusSelected, isStatusEditable {
+            Menu {
+                ForEach(AdminInvoiceStatus.allCases) { option in
+                    Button {
+                        onStatusSelected(option)
+                    } label: {
+                        HStack {
+                            Text(statusLabel(option))
+                            Spacer(minLength: 8)
+                            if currentStatus == option {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 13, weight: .semibold))
+                            }
+                        }
+                    }
+                }
+            } label: {
+                badge
+            }
+        } else {
+            badge
+        }
+    }
 
     @ViewBuilder
     private func statItem(

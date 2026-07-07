@@ -10,6 +10,7 @@ import SwiftUI
 struct SignUpView: View {
 
     @EnvironmentObject private var lm: LocalizationManager
+    @EnvironmentObject private var session: SessionStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var scheme
 
@@ -628,10 +629,23 @@ struct SignUpView: View {
         if password != confirmPassword { fire(lm["password_mismatch"]); return }
 
         isLoading = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
-            isLoading = false
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
-                showSuccess = true
+        let body = RegisterRequestDTO(
+            name: u,
+            email: email.trimmingCharacters(in: .whitespaces).lowercased(),
+            gender: selectedGender == .male ? "MALE" : "FEMALE",
+            password: password)
+        Task {
+            do {
+                try await session.register(body)
+                // Registration signs the user in; show the success screen briefly before
+                // SessionStore routing swaps in the main app.
+                isLoading = false
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+                    showSuccess = true
+                }
+            } catch {
+                isLoading = false
+                fire((error as? APIError)?.errorDescription ?? lm["email_invalid"])
             }
         }
     }
@@ -689,6 +703,8 @@ private struct SUPressStyle: ButtonStyle {
 
 #Preview {
     NavigationStack {
-        SignUpView().environmentObject(LocalizationManager())
+        SignUpView()
+            .environmentObject(LocalizationManager())
+            .environmentObject(SessionStore())
     }
 }

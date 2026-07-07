@@ -100,8 +100,6 @@ struct PasswordSecurityView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
-    @AppStorage("rccUserPassword") private var storedPassword: String = "123"
-
     @State private var currentPwd  = ""
     @State private var newPwd      = ""
     @State private var confirmPwd  = ""
@@ -304,17 +302,13 @@ struct PasswordSecurityView: View {
     // MARK: - Validation
 
     private var isFormValid: Bool {
-        !currentPwd.isEmpty && newPwd.count >= 6 && !confirmPwd.isEmpty
+        !currentPwd.isEmpty && newPwd.count >= 8 && !confirmPwd.isEmpty
     }
 
     private func attemptSave() {
         withAnimation { errorMsg = "" }
 
-        guard currentPwd == storedPassword else {
-            withAnimation { errorMsg = lm["password_incorrect"] }
-            return
-        }
-        guard newPwd.count >= 6 else {
+        guard newPwd.count >= 8 else {
             withAnimation { errorMsg = lm["password_too_short"] }
             return
         }
@@ -324,18 +318,24 @@ struct PasswordSecurityView: View {
         }
 
         isSaving = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            storedPassword = newPwd
-            isSaving       = false
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                showSuccess = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        Task {
+            do {
+                try await BackendAPI.changePassword(current: currentPwd, new: newPwd)
+                isSaving = false
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                    showSuccess = true
+                }
+                try? await Task.sleep(nanoseconds: 1_800_000_000)
                 withAnimation { showSuccess = false }
-                currentPwd  = ""
-                newPwd      = ""
-                confirmPwd  = ""
+                currentPwd = ""
+                newPwd     = ""
+                confirmPwd = ""
                 dismiss()
+            } catch {
+                isSaving = false
+                withAnimation {
+                    errorMsg = (error as? APIError)?.errorDescription ?? lm["password_incorrect"]
+                }
             }
         }
     }

@@ -11,6 +11,8 @@ import SwiftUI
 
 struct NotificationModel: Identifiable {
     let id = UUID()
+    /// Backend notification id (nil for previews/mock rows).
+    var backendId: Int? = nil
     var image: String
     var userName: String
     var payMonth: String
@@ -61,21 +63,25 @@ struct NotificationCard: View {
             // Text content
             VStack(alignment: .leading, spacing: 4) {
 
-                // Name + amount
+                // Title + optional amount
                 HStack(alignment: .firstTextBaseline) {
                     Text(item.userName)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.primary)
+                        .lineLimit(1)
                     Spacer()
-                    Text("$\(item.amount)")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(mint)
+                    if !item.amount.isEmpty {
+                        Text("$\(item.amount)")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(mint)
+                    }
                 }
 
-                // Pay month
-                Text("\(lm["monthly_bill"]) · \(item.payMonth)")
+                // Message body
+                Text(item.payMonth)
                     .font(.system(size: 13))
                     .foregroundColor(item.isRead ? .secondary : .blue)
+                    .lineLimit(2)
 
                 // Transaction date
                 HStack(spacing: 4) {
@@ -146,14 +152,9 @@ struct NotificationView: View {
     @EnvironmentObject private var lm: LocalizationManager
     @Environment(\.colorScheme) private var colorScheme
     @State private var filter: NotifFilter = .all
-    @State private var notifications: [NotificationModel] = [
-        NotificationModel(image: "Profile", userName: "Kouern Doch",    payMonth: "March 2026",    transactionDate: "20 Mar 2026  ·  09:30 AM", amount: "150.00", isRead: false),
-        NotificationModel(image: "Profile", userName: "Leng Chingmony", payMonth: "March 2026",    transactionDate: "19 Mar 2026  ·  02:15 PM", amount: "150.00", isRead: false),
-        NotificationModel(image: "Profile", userName: "Kouern Doch",    payMonth: "February 2026", transactionDate: "18 Feb 2026  ·  10:00 AM", amount: "150.00", isRead: true),
-        NotificationModel(image: "Profile", userName: "Leng Chingmony", payMonth: "February 2026", transactionDate: "17 Feb 2026  ·  11:30 AM", amount: "150.00", isRead: true),
-        NotificationModel(image: "Profile", userName: "Kouern Doch",    payMonth: "January 2026",  transactionDate: "15 Jan 2026  ·  09:45 AM", amount: "150.00", isRead: true),
-        NotificationModel(image: "Profile", userName: "Leng Chingmony", payMonth: "January 2026",  transactionDate: "14 Jan 2026  ·  03:00 PM", amount: "150.00", isRead: true),
-    ]
+    @State private var notifications: [NotificationModel] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String?
 
     private var unreadCount: Int { notifications.filter { !$0.isRead }.count }
 
@@ -172,7 +173,13 @@ struct NotificationView: View {
                 filterBar.padding(.bottom, 8)
 
                 List {
-                    if displayed.isEmpty {
+                    if isLoading && notifications.isEmpty {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 60)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    } else if displayed.isEmpty {
                         NotifEmptyState()
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -185,6 +192,7 @@ struct NotificationView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                .refreshable { await load() }
                 .animation(.easeInOut(duration: 0.25), value: notifications.map { $0.isRead })
                 .animation(.easeInOut(duration: 0.25), value: notifications.count)
             }
@@ -192,6 +200,7 @@ struct NotificationView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(false)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .task { await load() }
     }
 
     // MARK: - Header
@@ -201,6 +210,15 @@ struct NotificationView: View {
             Text(lm["notifications"])
                 .font(.system(size: 24, weight: .bold))
             Spacer()
+            if unreadCount > 0 {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) { markAllRead() }
+                } label: {
+                    Text(lm["mark_all_read"])
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+            }
         }
         .padding(.horizontal)
         .padding(.top, 8)
@@ -283,13 +301,47 @@ struct NotificationView: View {
     // MARK: - Actions
 
     private func markAsRead(_ item: NotificationModel) {
-        if let i = notifications.firstIndex(where: { $0.id == item.id }) {
-            notifications[i].isRead = true
+        guard let i = notifications.firstIndex(where: { $0.id == item.id }), !notifications[i].isRead else { return }
+        notifications[i].isRead = true  // optimistic
+        if let backendId = item.backendId {
+            Task { _ = try? await BackendAPI.markNotificationRead(id: backendId) }
         }
     }
 
+    private func markAllRead() {
+        for i in notifications.indices { notifications[i].isRead = true }  // optimistic
+        Task { try? await BackendAPI.markAllNotificationsRead() }
+    }
+
     private func deleteNotif(_ item: NotificationModel) {
-        notifications.removeAll { $0.id == item.id }
+        notifications.removeAll { $0.id == item.id }  // optimistic
+        if let backendId = item.backendId {
+            Task { try? await BackendAPI.deleteNotification(id: backendId) }
+        }
+    }
+
+    // MARK: - Loading
+
+    @MainActor
+    private func load() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let items = try await BackendAPI.listNotifications()
+            notifications = items.map { dto in
+                NotificationModel(
+                    backendId: dto.notificationId,
+                    image: "Profile",
+                    userName: dto.title,
+                    payMonth: dto.message,
+                    transactionDate: DisplayFormat.prettyDate(dto.createdAt),
+                    amount: "",
+                    isRead: dto.read)
+            }
+        } catch {
+            errorMessage = (error as? APIError)?.errorDescription ?? "Failed to load notifications."
+        }
+        isLoading = false
     }
 }
 
