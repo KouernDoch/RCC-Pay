@@ -41,10 +41,13 @@ final class SessionStore: ObservableObject {
     }
 
     func login(email: String, password: String) async throws {
+       
         let result = try await BackendAPI.login(
             email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
             password: password)
+        print("Data : ", result)
         TokenStore.token = result.accessToken
+        
         apply(result.user)
     }
 

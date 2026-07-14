@@ -76,6 +76,7 @@ struct APIClient {
         var components = URLComponents(
             url: APIConfig.baseURL.appendingPathComponent(path),
             resolvingAgainstBaseURL: false)
+        
         if let query, !query.isEmpty {
             components?.queryItems = query
         }

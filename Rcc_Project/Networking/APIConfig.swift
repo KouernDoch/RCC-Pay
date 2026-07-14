@@ -8,7 +8,7 @@ import Foundation
 enum APIConfig {
 
     /// Base origin of the backend, without the `/api` suffix.
-    static let host = "http://localhost:8888"
+    static let host = "http://157.10.72.79:8888"
 
     /// Base URL including the `/api` context path all controllers share.
     static var baseURL: URL { URL(string: "\(host)/api")! }
