@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 import UserNotifications
+import UniformTypeIdentifiers
 
 // MARK: - Reusable Row
 
@@ -442,6 +443,8 @@ struct ProfileView: View {
 
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
+    @AppStorage("profileImageURL") private var profileImageURLString: String = ""
+    @State private var isUploadingProfileImage = false
     @State private var showThemePicker        = false
     @State private var showLanguagePicker     = false
     @State private var showNotifDeniedAlert   = false
@@ -467,91 +470,68 @@ struct ProfileView: View {
         appLanguage == "km" ? "ខ្មែរ" : "English"
     }
 
+    // MARK: - Upload API Models
 
-    // MARK: Body
+    private struct UploadResponse: Decodable {
+        let message: String
+        let payload: Payload
+        let status: String
+        let timestamp: String
 
-    var body: some View {
-        ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    profileCard
-                    settingsSection
-                    if userRole == "admin" {
-                        adminPaymentSettingsSection
-                    }
-                    preferenceSection
-                    signOutButton
-                }
-                .padding(.top, 12)
-                .padding(.bottom, 40)
-            }
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(false)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .sheet(isPresented: $showThemePicker) {
-            ThemePickerSheet()
-        }
-        .sheet(isPresented: $showLanguagePicker) {
-            LanguagePickerSheet()
-        }
-        .onAppear {
-            Task { await syncNotificationStatus() }
-            loadPaymentAmountDrafts()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                Task { await syncNotificationStatus() }
-            }
-        }
-        .onChange(of: notificationsEnabled) { _, newValue in
-            if newValue { Task { await handleNotificationEnable() } }
-        }
-        .onChange(of: selectedItem) { _, newValue in
-            guard let newValue else { return }
-            Task {
-                if let data = try? await newValue.loadTransferable(type: Data.self),
-                   let uiImage = UIImage(data: data) {
-                    selectedImage = uiImage
-                }
-            }
-        }
-        .alert("Notifications Disabled", isPresented: $showNotifDeniedAlert) {
-            Button("Open Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Notifications are turned off in iOS Settings. Tap \"Open Settings\" to enable them.")
-        }
-        .alert(lm["admin_payment_amounts_saved"], isPresented: $showPaymentSavedAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(lm["admin_payment_amounts_saved_message"])
-        }
-        .alert(lm["admin_payment_amounts_invalid"], isPresented: $showPaymentInvalidAlert) {
-            Button("OK", role: .cancel) { }
+        struct Payload: Decodable {
+            let fileName: String
+            let fileSize: Int
+            let fileType: String
+            let fileUrl: String
         }
     }
 
-    // MARK: - Notification Permission Helpers
+    private let uploadEndpoint = URL(string: "http://157.10.72.79:8888/api/files/upload")!
 
-    /// Reads real system permission and updates the toggle to match.
+    private func uploadProfileImage(data: Data, filename: String, mimeType: String) async throws -> String {
+        var request = URLRequest(url: uploadEndpoint)
+        request.httpMethod = "POST"
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        func append(_ string: String) { body.append(string.data(using: .utf8)!) }
+
+        // If the server expects a specific field name (e.g., "file"), use it here
+        let fieldName = "file"
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(filename)\"\r\n")
+        append("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(data)
+        append("\r\n")
+        append("--\(boundary)--\r\n")
+
+        request.httpBody = body
+
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let text = String(data: responseData, encoding: .utf8) ?? "<no body>"
+            throw NSError(domain: "UploadError", code: (response as? HTTPURLResponse)?.statusCode ?? -1, userInfo: [NSLocalizedDescriptionKey: "Upload failed: \(text)"])
+        }
+        let decoded = try JSONDecoder().decode(UploadResponse.self, from: responseData)
+        return decoded.payload.fileUrl
+    }
+
+    // MARK: - Notifications helpers
     private func syncNotificationStatus() async {
+        // Query current notification settings and reflect them in the toggle
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         await MainActor.run {
             switch settings.authorizationStatus {
-            case .denied:
-                notificationsEnabled = false
             case .authorized, .provisional, .ephemeral:
-                // Keep the user's in-app choice; system has allowed it.
+                // Keep the user's toggle value as-is
                 break
+            case .denied:
+                // If denied by system, force toggle off and offer to open Settings when user tries to enable
+                notificationsEnabled = false
             case .notDetermined:
-                // Permission not yet requested; leave toggle as-is.
+                // Not determined yet; don't change the toggle automatically
                 break
             @unknown default:
                 break
@@ -559,23 +539,28 @@ struct ProfileView: View {
         }
     }
 
-    /// Called when the user flips the toggle to ON.
     private func handleNotificationEnable() async {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        switch settings.authorizationStatus {
-        case .notDetermined:
-            let granted = (try? await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert, .badge, .sound])) ?? false
-            await MainActor.run { notificationsEnabled = granted }
-        case .denied:
-            await MainActor.run {
-                notificationsEnabled    = false
-                showNotifDeniedAlert    = true
+        // Request authorization if needed when user enables the toggle
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        if settings.authorizationStatus == .notDetermined {
+            do {
+                let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
+                await MainActor.run {
+                    notificationsEnabled = granted
+                    if !granted { showNotifDeniedAlert = true }
+                }
+            } catch {
+                await MainActor.run {
+                    notificationsEnabled = false
+                    showNotifDeniedAlert = true
+                }
             }
-        case .authorized, .provisional, .ephemeral:
-            break
-        @unknown default:
-            break
+        } else if settings.authorizationStatus == .denied {
+            await MainActor.run {
+                notificationsEnabled = false
+                showNotifDeniedAlert = true
+            }
         }
     }
 
@@ -603,7 +588,20 @@ struct ProfileView: View {
                 PhotosPicker(selection: $selectedItem, matching: .images) {
                     ZStack(alignment: .bottomTrailing) {
                         Group {
-                            if let selectedImage {
+                            if !profileImageURLString.isEmpty, let url = URL(string: profileImageURLString) {
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .empty:
+                                        ZStack { Color.gray.opacity(0.15); ProgressView() }
+                                    case .success(let image):
+                                        image.resizable().scaledToFill()
+                                    case .failure:
+                                        if let selectedImage { Image(uiImage: selectedImage).resizable().scaledToFill() } else { Image("Profile").resizable().scaledToFill() }
+                                    @unknown default:
+                                        if let selectedImage { Image(uiImage: selectedImage).resizable().scaledToFill() } else { Image("Profile").resizable().scaledToFill() }
+                                    }
+                                }
+                            } else if let selectedImage {
                                 Image(uiImage: selectedImage).resizable().scaledToFill()
                             } else {
                                 Image("Profile").resizable().scaledToFill()
@@ -613,6 +611,23 @@ struct ProfileView: View {
                         .clipShape(Circle())
                         .overlay(Circle().stroke(Color.white, lineWidth: 3))
                         .shadow(color: Color.black.opacity(0.18), radius: 10, x: 0, y: 4)
+
+                        if isUploadingProfileImage {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10).fill(Color.black.opacity(0.45))
+                                HStack(spacing: 6) {
+                                    ProgressView().tint(.white)
+                                    Text("Uploading...")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.white)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                            }
+                            .fixedSize()
+                            .padding(6)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
 
                         ZStack {
                             Circle().fill(Color(red: 0.18, green: 0.46, blue: 0.98))
@@ -830,6 +845,144 @@ struct ProfileView: View {
             .padding(.horizontal)
         }
     }
+
+    // MARK: - Body
+
+    var body: some View {
+        let rootStack: AnyView = AnyView(
+            VStack(spacing: 0) {
+                let z: AnyView = AnyView(
+                    ZStack(alignment: .center) {
+                        backgroundLayer
+                        contentScroll
+                    }
+                )
+                z
+            }
+        )
+
+        return rootStack
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(false)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .sheet(isPresented: $showThemePicker) { ThemePickerSheet() }
+            .sheet(isPresented: $showLanguagePicker) { LanguagePickerSheet() }
+            .onAppear {
+                Task { await syncNotificationStatus() }
+                loadPaymentAmountDrafts()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    Task { await syncNotificationStatus() }
+                }
+            }
+            .onChange(of: notificationsEnabled) { _, newValue in
+                if newValue { Task { await handleNotificationEnable() } }
+            }
+            .onChange(of: selectedItem) { _, newValue in
+                guard let newValue else { return }
+                Task {
+                    do {
+                        isUploadingProfileImage = true
+                        guard let data = try await newValue.loadTransferable(type: Data.self) else { return }
+
+                        // Determine content type and derive MIME type + filename
+                        let utType = newValue.supportedContentTypes.first
+                        let mimeType: String = {
+                            if let utType {
+                                if utType.conforms(to: .png) { return "image/png" }
+                                if utType.conforms(to: .jpeg) { return "image/jpeg" }
+                                if utType.conforms(to: .heic) { return "image/heic" }
+                                if utType.conforms(to: .gif) { return "image/gif" }
+                                if utType.conforms(to: .tiff) { return "image/tiff" }
+                                if let mime = utType.preferredMIMEType { return mime }
+                            }
+                            return "image/jpeg"
+                        }()
+
+                        let suggestedName: String = {
+                            if let utType {
+                                if utType == .png { return "upload.png" }
+                                if utType == .jpeg { return "upload.jpg" }
+                                if utType == .heic { return "upload.heic" }
+                                if utType == .gif { return "upload.gif" }
+                                if utType == .tiff { return "upload.tiff" }
+                                if let ext = utType.preferredFilenameExtension { return "upload.\(ext)" }
+                            }
+                            return "upload.jpg"
+                        }()
+
+                        if let uiImage = UIImage(data: data) { selectedImage = uiImage }
+                        let urlString = try await uploadProfileImage(data: data, filename: suggestedName, mimeType: mimeType)
+                        await MainActor.run { profileImageURLString = urlString }
+                    } catch {
+                        print("Upload failed:", error)
+                    }
+                    await MainActor.run { isUploadingProfileImage = false }
+                }
+            }
+            .modifier(NotificationsDeniedAlertModifier(show: $showNotifDeniedAlert))
+            .modifier(PaymentAlertsModifier(saved: $showPaymentSavedAlert, invalid: $showPaymentInvalidAlert, message: lm["admin_payment_amounts_saved_message"], titleSaved: lm["admin_payment_amounts_saved"], titleInvalid: lm["admin_payment_amounts_invalid"]))
+    }
+
+    private var backgroundLayer: some View {
+        Color(.systemGroupedBackground)
+            .ignoresSafeArea()
+    }
+
+    private var contentScroll: some View {
+        ScrollView(showsIndicators: false) {
+            contentStack
+                .padding(.top, 12)
+                .padding(.bottom, 40)
+        }
+    }
+
+    private var contentStack: some View {
+        VStack(spacing: 24) {
+            profileCard
+            settingsSection
+            if userRole == "admin" {
+                adminPaymentSettingsSection
+            }
+            preferenceSection
+            signOutButton
+        }
+    }
+}
+
+private struct NotificationsDeniedAlertModifier: ViewModifier {
+    @Binding var show: Bool
+    func body(content: Content) -> some View {
+        content.alert("Notifications Disabled", isPresented: $show) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Notifications are turned off in iOS Settings. Tap \"Open Settings\" to enable them.")
+        }
+    }
+}
+
+private struct PaymentAlertsModifier: ViewModifier {
+    @Binding var saved: Bool
+    @Binding var invalid: Bool
+    let message: String
+    let titleSaved: String
+    let titleInvalid: String
+
+    func body(content: Content) -> some View {
+        content
+            .alert(titleSaved, isPresented: $saved) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(message)
+            }
+            .alert(titleInvalid, isPresented: $invalid) {
+                Button("OK", role: .cancel) { }
+            }
+    }
 }
 
 // MARK: - Preview
@@ -841,3 +994,4 @@ struct ProfileView: View {
             .environmentObject(SessionStore())
     }
 }
+
