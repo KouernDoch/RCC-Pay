@@ -111,6 +111,15 @@ struct BulkInvoiceIssueDTO: Decodable {
     let invoices: [InvoiceDTO]
 }
 
+/// Payload returned by `POST /api/files/upload`. The backend also sets this URL as the
+/// current user's `profileImage`, so it round-trips back via `GET /api/users/me`.
+struct FileUploadDTO: Decodable {
+    let fileName: String?
+    let fileUrl: String
+    let fileType: String?
+    let fileSize: Int?
+}
+
 // MARK: - Request bodies (encode)
 
 struct LoginRequestDTO: Encodable {

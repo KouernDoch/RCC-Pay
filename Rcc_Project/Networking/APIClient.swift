@@ -65,6 +65,42 @@ struct APIClient {
         return true
     }
 
+    // MARK: - Multipart upload
+
+    /// Uploads a single file as `multipart/form-data` and decodes the wrapped payload.
+    /// Injects the bearer token exactly like the JSON verbs, so it works against the
+    /// secured `/api/**` endpoints.
+    func upload<T: Decodable>(
+        _ path: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String,
+        fieldName: String = "file"
+    ) async throws -> T {
+        let url = APIConfig.baseURL.appendingPathComponent(path)
+        var req = URLRequest(url: url)
+        req.httpMethod = HTTPMethod.post.rawValue
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = TokenStore.token {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        func append(_ string: String) { body.append(string.data(using: .utf8)!) }
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n")
+        append("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(fileData)
+        append("\r\n")
+        append("--\(boundary)--\r\n")
+        req.httpBody = body
+
+        return try await perform(req)
+    }
+
     // MARK: - Core
 
     private func request<T: Decodable>(
@@ -95,6 +131,11 @@ struct APIClient {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
+        return try await perform(req)
+    }
+
+    /// Sends a prepared request, maps status codes/errors, and decodes the `payload` envelope.
+    private func perform<T: Decodable>(_ req: URLRequest) async throws -> T {
         let data: Data
         let response: URLResponse
         do {

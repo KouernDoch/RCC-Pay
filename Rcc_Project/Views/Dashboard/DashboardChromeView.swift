@@ -33,11 +33,7 @@ struct DashboardChromeView: View {
             HStack(spacing: 12) {
                 NavigationLink(destination: ProfileView()) {
                     HStack(spacing: 10) {
-                        Image("Profile")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 42, height: 42)
-                            .clipShape(Circle())
+                        ProfileAvatarView(size: 42)
                             .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(displayName)

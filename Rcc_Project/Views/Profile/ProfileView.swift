@@ -10,6 +10,26 @@ import PhotosUI
 import UserNotifications
 import UniformTypeIdentifiers
 
+// MARK: - Upload helpers
+
+private extension UIImage {
+    /// Downscales to `maxDimension` (avatars never need more) and bakes in the EXIF
+    /// orientation, which `jpegData` would otherwise carry as a flag the backend drops.
+    func normalizedForUpload(maxDimension: CGFloat = 1024) -> UIImage {
+        let longest = max(size.width, size.height)
+        let scale = longest > maxDimension ? maxDimension / longest : 1
+        let target = CGSize(width: (size.width * scale).rounded(),
+                            height: (size.height * scale).rounded())
+
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        format.opaque = true
+        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            draw(in: CGRect(origin: .zero, size: target))
+        }
+    }
+}
+
 // MARK: - Reusable Row
 
 struct ProfileMenuRow: View {
@@ -445,6 +465,7 @@ struct ProfileView: View {
     @State private var selectedImage: UIImage?
     @AppStorage("profileImageURL") private var profileImageURLString: String = ""
     @State private var isUploadingProfileImage = false
+    @State private var uploadErrorMsg: String?
     @State private var showThemePicker        = false
     @State private var showLanguagePicker     = false
     @State private var showNotifDeniedAlert   = false
@@ -468,54 +489,6 @@ struct ProfileView: View {
 
     private var languageLabel: String {
         appLanguage == "km" ? "ខ្មែរ" : "English"
-    }
-
-    // MARK: - Upload API Models
-
-    private struct UploadResponse: Decodable {
-        let message: String
-        let payload: Payload
-        let status: String
-        let timestamp: String
-
-        struct Payload: Decodable {
-            let fileName: String
-            let fileSize: Int
-            let fileType: String
-            let fileUrl: String
-        }
-    }
-
-    private let uploadEndpoint = URL(string: "http://157.10.72.79:8888/api/files/upload")!
-
-    private func uploadProfileImage(data: Data, filename: String, mimeType: String) async throws -> String {
-        var request = URLRequest(url: uploadEndpoint)
-        request.httpMethod = "POST"
-
-        let boundary = "Boundary-\(UUID().uuidString)"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-        var body = Data()
-        func append(_ string: String) { body.append(string.data(using: .utf8)!) }
-
-        // If the server expects a specific field name (e.g., "file"), use it here
-        let fieldName = "file"
-        append("--\(boundary)\r\n")
-        append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(filename)\"\r\n")
-        append("Content-Type: \(mimeType)\r\n\r\n")
-        body.append(data)
-        append("\r\n")
-        append("--\(boundary)--\r\n")
-
-        request.httpBody = body
-
-        let (responseData, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            let text = String(data: responseData, encoding: .utf8) ?? "<no body>"
-            throw NSError(domain: "UploadError", code: (response as? HTTPURLResponse)?.statusCode ?? -1, userInfo: [NSLocalizedDescriptionKey: "Upload failed: \(text)"])
-        }
-        let decoded = try JSONDecoder().decode(UploadResponse.self, from: responseData)
-        return decoded.payload.fileUrl
     }
 
     // MARK: - Notifications helpers
@@ -564,6 +537,65 @@ struct ProfileView: View {
         }
     }
 
+    // MARK: - Profile image upload
+
+    /// Picked photo → upload → attach to profile → refresh session, so the new avatar
+    /// survives relaunch and reaches every screen reading `session.currentUser`.
+    @MainActor
+    private func uploadProfileImage(_ item: PhotosPickerItem) async {
+        uploadErrorMsg = nil
+        isUploadingProfileImage = true
+        // Let the same photo be re-picked later: PhotosPickerItem is Equatable, so leaving
+        // this set would make onChange skip an identical re-selection.
+        defer {
+            isUploadingProfileImage = false
+            selectedItem = nil
+        }
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let picked = UIImage(data: data) else {
+                uploadErrorMsg = "That photo could not be read. Please try another."
+                return
+            }
+
+            // Normalize to JPEG: camera photos arrive as HEIC, which the backend serves back
+            // as application/octet-stream (FileController only maps png/jpg/pdf/gif/mp4).
+            // Re-encoding also strips the orientation quirk and keeps uploads small.
+            let normalized = picked.normalizedForUpload()
+            guard let jpeg = normalized.jpegData(compressionQuality: 0.85) else {
+                uploadErrorMsg = "That photo could not be prepared for upload."
+                return
+            }
+
+            // Show it immediately — this outranks the still-stale remote URL.
+            selectedImage = normalized
+
+            // 1. POST /api/files/upload — store the image, get its served URL.
+            let urlString = try await BackendAPI.uploadProfileImage(
+                data: jpeg, filename: "profile.jpg", mimeType: "image/jpeg")
+            profileImageURLString = urlString
+
+            // 2. PUT /api/users/me — save that URL onto the user's profile.
+            _ = try await BackendAPI.updateCurrentUser(
+                UserUpdateRequestDTO(profileImage: urlString))
+
+            // 3. Re-read the profile so `session.currentUser` carries the new URL.
+            await session.refreshCurrentUser()
+
+            // The refresh swallows its own errors, so confirm it actually landed rather
+            // than leaving the old URL pinned until the next launch.
+            if session.currentUser?.profileImage != urlString {
+                uploadErrorMsg = "Your photo was saved, but the profile could not be refreshed."
+            }
+        } catch {
+            // Drop the optimistic image so we never show a photo the backend didn't store.
+            selectedImage = nil
+            uploadErrorMsg = (error as? APIError)?.errorDescription
+                ?? "Uploading your photo failed. Please try again."
+        }
+    }
+
     // MARK: - Profile Card
 
     private var profileCard: some View {
@@ -587,29 +619,11 @@ struct ProfileView: View {
             VStack(spacing: 10) {
                 PhotosPicker(selection: $selectedItem, matching: .images) {
                     ZStack(alignment: .bottomTrailing) {
-                        Group {
-                            if !profileImageURLString.isEmpty, let url = URL(string: profileImageURLString) {
-                                AsyncImage(url: url) { phase in
-                                    switch phase {
-                                    case .empty:
-                                        ZStack { Color.gray.opacity(0.15); ProgressView() }
-                                    case .success(let image):
-                                        image.resizable().scaledToFill()
-                                    case .failure:
-                                        if let selectedImage { Image(uiImage: selectedImage).resizable().scaledToFill() } else { Image("Profile").resizable().scaledToFill() }
-                                    @unknown default:
-                                        if let selectedImage { Image(uiImage: selectedImage).resizable().scaledToFill() } else { Image("Profile").resizable().scaledToFill() }
-                                    }
-                                }
-                            } else if let selectedImage {
-                                Image(uiImage: selectedImage).resizable().scaledToFill()
-                            } else {
-                                Image("Profile").resizable().scaledToFill()
-                            }
-                        }
-                        .frame(width: 90, height: 90)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(Color.white, lineWidth: 3))
+                        // `selectedImage` is the photo the user just picked: it shows straight
+                        // away and is cleared on failure, so we never display an image the
+                        // backend didn't actually store.
+                        ProfileAvatarView(size: 90, localOverride: selectedImage)
+                            .overlay(Circle().stroke(Color.white, lineWidth: 3))
                         .shadow(color: Color.black.opacity(0.18), radius: 10, x: 0, y: 4)
 
                         if isUploadingProfileImage {
@@ -673,6 +687,20 @@ struct ProfileView: View {
                 .padding(.horizontal, 20)
 
             ProfileSectionCard {
+                // Edit Profile (name & gender)
+                NavigationLink(destination: EditProfileView()) {
+                    ProfileMenuRow(
+                        item: ProfileMenuItem(
+                            icon: "person.text.rectangle.fill",
+                            iconColor: .white,
+                            iconBg: Color(red: 0.47, green: 0.42, blue: 0.96),
+                            title: lm["edit_profile"]
+                        ),
+                        showDivider: true
+                    )
+                }
+                .buttonStyle(.plain)
+
                 // Password & Security
                 NavigationLink(destination: PasswordSecurityView()) {
                     ProfileMenuRow(
@@ -881,45 +909,16 @@ struct ProfileView: View {
             }
             .onChange(of: selectedItem) { _, newValue in
                 guard let newValue else { return }
-                Task {
-                    do {
-                        isUploadingProfileImage = true
-                        guard let data = try await newValue.loadTransferable(type: Data.self) else { return }
-
-                        // Determine content type and derive MIME type + filename
-                        let utType = newValue.supportedContentTypes.first
-                        let mimeType: String = {
-                            if let utType {
-                                if utType.conforms(to: .png) { return "image/png" }
-                                if utType.conforms(to: .jpeg) { return "image/jpeg" }
-                                if utType.conforms(to: .heic) { return "image/heic" }
-                                if utType.conforms(to: .gif) { return "image/gif" }
-                                if utType.conforms(to: .tiff) { return "image/tiff" }
-                                if let mime = utType.preferredMIMEType { return mime }
-                            }
-                            return "image/jpeg"
-                        }()
-
-                        let suggestedName: String = {
-                            if let utType {
-                                if utType == .png { return "upload.png" }
-                                if utType == .jpeg { return "upload.jpg" }
-                                if utType == .heic { return "upload.heic" }
-                                if utType == .gif { return "upload.gif" }
-                                if utType == .tiff { return "upload.tiff" }
-                                if let ext = utType.preferredFilenameExtension { return "upload.\(ext)" }
-                            }
-                            return "upload.jpg"
-                        }()
-
-                        if let uiImage = UIImage(data: data) { selectedImage = uiImage }
-                        let urlString = try await uploadProfileImage(data: data, filename: suggestedName, mimeType: mimeType)
-                        await MainActor.run { profileImageURLString = urlString }
-                    } catch {
-                        print("Upload failed:", error)
-                    }
-                    await MainActor.run { isUploadingProfileImage = false }
-                }
+                Task { await uploadProfileImage(newValue) }
+            }
+            .alert(
+                "Photo Upload Failed",
+                isPresented: Binding(get: { uploadErrorMsg != nil },
+                                     set: { if !$0 { uploadErrorMsg = nil } })
+            ) {
+                Button("OK", role: .cancel) { uploadErrorMsg = nil }
+            } message: {
+                Text(uploadErrorMsg ?? "")
             }
             .modifier(NotificationsDeniedAlertModifier(show: $showNotifDeniedAlert))
             .modifier(PaymentAlertsModifier(saved: $showPaymentSavedAlert, invalid: $showPaymentInvalidAlert, message: lm["admin_payment_amounts_saved_message"], titleSaved: lm["admin_payment_amounts_saved"], titleInvalid: lm["admin_payment_amounts_invalid"]))

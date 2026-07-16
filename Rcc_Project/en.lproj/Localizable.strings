@@ -23,6 +23,10 @@
 "settings"           = "Settings";
 "preference"         = "Preference";
 "password_security"  = "Password & Security";
+"edit_profile"        = "Edit Profile";
+"edit_profile_subtitle" = "Update your name and details";
+"profile_updated"     = "Profile updated successfully!";
+"profile_update_failed" = "Could not update your profile. Please try again.";
 "notification_menu"  = "Notification";
 "language"           = "Language";
 "about_us"           = "About Us";

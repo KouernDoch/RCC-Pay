@@ -28,6 +28,19 @@ enum BackendAPI {
             body: ChangePasswordRequestDTO(currentPassword: current, newPassword: new))
     }
 
+    /// Update the signed-in user's own profile (name / gender / email / photo URL).
+    static func updateCurrentUser(_ body: UserUpdateRequestDTO) async throws -> UserDTO {
+        try await client.put("/users/me", body: body)
+    }
+
+    /// Uploads a profile photo to the backend, which persists it as the current user's
+    /// `profileImage`. Returns the served file URL.
+    static func uploadProfileImage(data: Data, filename: String, mimeType: String) async throws -> String {
+        let payload: FileUploadDTO = try await client.upload(
+            "/files/upload", fileData: data, fileName: filename, mimeType: mimeType)
+        return payload.fileUrl
+    }
+
     static func listUsers() async throws -> [UserDTO] {
         try await client.get("/users")
     }

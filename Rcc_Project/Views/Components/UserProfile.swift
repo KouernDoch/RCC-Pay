@@ -70,16 +70,6 @@ struct UserProfile: View {
             .presentationDetents([.height(100)])
                         
         }
-//        .actionSheet(isPresented: $choosingPhoto, content: {
-//            ActionSheet(title: Text("koko"),
-//                        buttons: [.default(
-//                            Text("Choose image")
-//                        ){
-//                            PhotosPicker(selection: $selectedItem,
-//                                         matching: .images){}
-//                        }
-//                        ,.cancel()])
-//        })
         .onChange(of: selectedItem) { _, newValue in
             if let newValue {
                 loadImage(from: newValue)
