@@ -60,6 +60,8 @@ struct Rcc_ProjectApp: App {
             .environmentObject(lm)
             .environmentObject(session)
             .task { await session.restoreSession() }
+            // Kicked off early so a token is usually ready by the time the user taps Sign In.
+            .task { await PushNotificationManager.shared.requestAuthorizationAndRegister() }
         }
     }
 }
@@ -85,8 +87,30 @@ private struct LaunchSplashView: View {
 
 class AppDelegate: NSObject,UIApplicationDelegate{
     static  let lockOrientation = UIInterfaceOrientationMask.portrait
-    
+
     func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         return AppDelegate.lockOrientation
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        PushNotificationManager.shared.configureOnLaunch()
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        PushNotificationManager.shared.setAPNSToken(deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        print("[Push] APNs registration failed: \(error.localizedDescription)")
     }
 }

@@ -14,6 +14,10 @@ struct SignUpView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var scheme
 
+    /// Reports the new account's email back to the login screen, so it can greet the user
+    /// with the address already filled in.
+    var onAccountCreated: (String) -> Void = { _ in }
+
     // Fields
     @State private var username        = ""
     @State private var email           = ""
@@ -636,9 +640,10 @@ struct SignUpView: View {
             password: password)
         Task {
             do {
-                try await session.register(body)
-                // Registration signs the user in; show the success screen briefly before
-                // SessionStore routing swaps in the main app.
+                // Creates the account without signing in, so the flow can end on the
+                // login screen rather than dropping the user straight into the app.
+                try await session.signUp(body)
+                onAccountCreated(body.email)
                 isLoading = false
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
                     showSuccess = true

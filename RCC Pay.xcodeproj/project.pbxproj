@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		29EA44F03009BFC7003223CE /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 29EA44EF3009BFC7003223CE /* FirebaseMessaging */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		293DEF8B2F04B1CA00B5C2D3 /* RCC Pay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RCC Pay.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		29EA44ED3009BD12003223CE /* RCC Pay.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "RCC Pay.entitlements"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,6 +41,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				29EA44F03009BFC7003223CE /* FirebaseMessaging in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -45,6 +51,7 @@
 		293DEF822F04B1CA00B5C2D3 = {
 			isa = PBXGroup;
 			children = (
+				29EA44ED3009BD12003223CE /* RCC Pay.entitlements */,
 				293DEF8D2F04B1CA00B5C2D3 /* Rcc_Project */,
 				293DEF8C2F04B1CA00B5C2D3 /* Products */,
 			);
@@ -78,6 +85,7 @@
 			);
 			name = "RCC Pay";
 			packageProductDependencies = (
+				29EA44EF3009BFC7003223CE /* FirebaseMessaging */,
 			);
 			productName = Rcc_Project;
 			productReference = 293DEF8B2F04B1CA00B5C2D3 /* RCC Pay.app */;
@@ -108,6 +116,9 @@
 			);
 			mainGroup = 293DEF822F04B1CA00B5C2D3;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				29EA44EE3009BFC7003223CE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 293DEF8C2F04B1CA00B5C2D3 /* Products */;
 			projectDirPath = "";
@@ -265,6 +276,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "RCC Pay.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WWH2BXD4W3;
@@ -299,6 +311,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "RCC Pay.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WWH2BXD4W3;
@@ -350,6 +363,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		29EA44EE3009BFC7003223CE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.16.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		29EA44EF3009BFC7003223CE /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 29EA44EE3009BFC7003223CE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 293DEF832F04B1CA00B5C2D3 /* Project object */;
 }

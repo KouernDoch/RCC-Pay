@@ -41,16 +41,29 @@ final class SessionStore: ObservableObject {
     }
 
     func login(email: String, password: String) async throws {
-       
+        // Best-effort: if push registration hasn't produced a token yet, log in without one.
+        let fcmToken = await PushNotificationManager.shared.currentToken()
+
         let result = try await BackendAPI.login(
             email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-            password: password)
-        print("Data : ", result)
+            password: password,
+            fcmToken: fcmToken)
         TokenStore.token = result.accessToken
-        
+
         apply(result.user)
     }
 
+    /// Creates the account **without** signing the new user in.
+    ///
+    /// `/auth/register` hands back a usable token, but we deliberately drop it: the sign-up
+    /// screen is meant to finish on the login screen so the user confirms the password they
+    /// just chose. Keeping the token would flip `isLoggedIn`, and the app-level routing
+    /// would tear the sign-up screen down mid-animation.
+    func signUp(_ body: RegisterRequestDTO) async throws {
+        _ = try await BackendAPI.register(body)
+    }
+
+    /// Creates the account *and* signs in, for callers that want to skip the login step.
     func register(_ body: RegisterRequestDTO) async throws {
         let result = try await BackendAPI.register(body)
         TokenStore.token = result.accessToken
@@ -69,6 +82,8 @@ final class SessionStore: ObservableObject {
         TokenStore.token = nil
         currentUser = nil
         clearMirror()
+        // Retire this device's FCM registration so the next account gets a fresh one.
+        Task { await PushNotificationManager.shared.clearToken() }
     }
 
     // MARK: - AppStorage mirrors

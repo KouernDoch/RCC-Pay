@@ -70,15 +70,49 @@
 "ph_confirm_password"   = "Re-enter new password";
 
 /* ── ForgotPasswordView ── */
-"fp_step1_title"        = "Find Your Account";
-"fp_step1_subtitle"     = "Enter your username to get started";
+/* Step 1 — email */
+"fp_step1_title"        = "Forgot Password";
+"fp_step1_subtitle"     = "Enter your email and we'll send you a verification code";
+"fp_send_code"          = "Send Code";
+
+/* Step 2 — OTP */
+"fp_otp_title"          = "Enter Verification Code";
+"fp_otp_subtitle"       = "We sent a 6-digit code to your email. It expires in 1 minute.";
+"fp_verify_code"        = "Verify Code";
+"fp_resend_code"        = "Resend code";
+"fp_request_new_code"   = "Request a new code";
+"fp_code_expires_in"    = "Code expires in";
+"fp_code_expired_hint"  = "Didn't get the code?";
+"fp_otp_resent"         = "A new code is on its way to your email.";
+
+/* Step 3 — new password */
 "fp_step2_title"        = "Reset Password";
 "fp_step2_subtitle"     = "Create a new password for your account";
-"fp_success_title"      = "Password Reset!";
-"fp_success_subtitle"   = "Your password has been updated successfully.";
-"fp_account_not_found"  = "Username not found. Please try again.";
+"ph_fp_new_password"    = "Enter your new password";
+"fp_rule_length"        = "8–128 characters";
+"fp_rule_case"          = "An uppercase and a lowercase letter";
+"fp_rule_digit"         = "At least one number";
+"fp_rule_symbol"        = "At least one special character";
 "fp_passwords_match"    = "Passwords match";
-"find_account"          = "Find Account";
+
+/* Success */
+"fp_success_title"      = "Password Reset!";
+"fp_success_subtitle"   = "Your password has been reset successfully.";
+"fp_login_reset_success" = "Your password has been reset successfully.";
+
+/* Errors */
+"fp_error_otp_incomplete"   = "Please enter all 6 digits of the code.";
+"fp_error_otp_invalid"      = "That code isn't correct. Please check it and try again.";
+"fp_error_otp_expired"      = "This code has expired. Request a new one to continue.";
+"fp_error_reset_window"     = "Your verification has expired. Please request a new code.";
+"fp_error_password_policy"  = "Your password doesn't meet all the requirements yet.";
+"fp_error_user_not_found"   = "We couldn't find an account for that email.";
+"fp_error_offline"          = "No internet connection. Please check your network and try again.";
+"fp_error_timeout"          = "The request timed out. Please try again.";
+"fp_error_network"          = "We couldn't reach the server. Please try again.";
+"fp_error_server"           = "Something went wrong on our end. Please try again shortly.";
+"fp_error_generic"          = "Something went wrong. Please try again.";
+
 "reset_password"        = "Reset Password";
 "back_to_login"         = "Back to Login";
 "back"                  = "Back";

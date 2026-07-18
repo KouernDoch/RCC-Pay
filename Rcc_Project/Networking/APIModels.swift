@@ -111,6 +111,23 @@ struct BulkInvoiceIssueDTO: Decodable {
     let invoices: [InvoiceDTO]
 }
 
+// MARK: - Password reset (OTP) responses
+
+/// Payload for the reset endpoints whose only result is a human-readable confirmation
+/// (`/auth/forgot-password`, `/auth/resend-forgot-password-otp`, `/auth/reset-password`).
+struct MessageResponseDTO: Decodable {
+    let message: String?
+}
+
+/// Payload of `POST /auth/verify-forgot-password-otp`. A *failed* verification never
+/// decodes into this type — the backend answers 400 with an `ErrorResponse` instead,
+/// which ``APIClient`` turns into `APIError.server`. So `verified` is effectively
+/// always `true` here; it is kept because the contract declares it.
+struct VerifyOtpResponseDTO: Decodable {
+    let verified: Bool
+    let message: String?
+}
+
 /// Payload returned by `POST /api/files/upload`. The backend also sets this URL as the
 /// current user's `profileImage`, so it round-trips back via `GET /api/users/me`.
 struct FileUploadDTO: Decodable {
@@ -140,6 +157,29 @@ struct RegisterRequestDTO: Encodable {
 struct ChangePasswordRequestDTO: Encodable {
     let currentPassword: String
     let newPassword: String
+}
+
+// MARK: Password reset (OTP) request bodies
+
+struct ForgotPasswordRequestDTO: Encodable {
+    let email: String
+}
+
+struct VerifyOtpRequestDTO: Encodable {
+    let email: String
+    let otp: String            // backend enforces exactly 6 digits
+}
+
+struct ResendOtpRequestDTO: Encodable {
+    let email: String
+}
+
+/// The backend re-checks `newPassword == confirmPassword` server-side, so both are sent.
+/// `newPassword` must satisfy: 8–128 chars with a lowercase, uppercase, digit and symbol.
+struct ResetPasswordRequestDTO: Encodable {
+    let email: String
+    let newPassword: String
+    let confirmPassword: String
 }
 
 struct InvoiceCreateRequestDTO: Encodable {

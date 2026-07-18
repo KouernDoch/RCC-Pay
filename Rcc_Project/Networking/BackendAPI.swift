@@ -8,12 +8,70 @@ enum BackendAPI {
 
     // MARK: Auth
 
-    static func login(email: String, password: String) async throws -> LoginResponseDTO {
-        try await client.post("/auth/login", body: LoginRequestDTO(email: email, password: password))
+    static func login(email: String, password: String, fcmToken: String? = nil) async throws -> LoginResponseDTO {
+     
+        try await client.post(
+            "/auth/login",
+            body: LoginRequestDTO(email: email, password: password, fcmToken: fcmToken))
     }
 
     static func register(_ body: RegisterRequestDTO) async throws -> LoginResponseDTO {
         try await client.post("/auth/register", body: body)
+    }
+
+    // MARK: Password reset (OTP)
+    //
+    // Four public endpoints, all unauthenticated. The OTP lives for 60s, resends are
+    // rate-limited to one per 60s and five per rolling hour, and the reset itself must
+    // land within 10 minutes of a successful verification.
+
+    /// Step 1 — email the user a 6-digit OTP.
+    ///
+    /// Succeeds even when no account exists for `email`: the backend deliberately returns
+    /// the same message either way so the endpoint can't be used to enumerate accounts.
+    /// Callers must therefore always advance to the OTP screen and never report
+    /// "account not found" here.
+    @discardableResult
+    static func requestPasswordResetOtp(email: String) async throws -> MessageResponseDTO {
+        try await client.post("/auth/forgot-password", body: ForgotPasswordRequestDTO(email: email))
+    }
+
+    /// Step 2 — verify the code the user typed.
+    ///
+    /// Throws `APIError.server(status: 400, …)` when the OTP is wrong or has expired, and
+    /// `status: 429` once five wrong guesses lock the code.
+    @discardableResult
+    static func verifyPasswordResetOtp(email: String, otp: String) async throws -> VerifyOtpResponseDTO {
+        try await client.post(
+            "/auth/verify-forgot-password-otp",
+            body: VerifyOtpRequestDTO(email: email, otp: otp))
+    }
+
+    /// Step 3 — issue a fresh OTP, retiring the previous one.
+    ///
+    /// Unlike step 1 this *does* report throttling (429 with the remaining wait in the
+    /// message), because by this point the user already knows the account exists.
+    @discardableResult
+    static func resendPasswordResetOtp(email: String) async throws -> MessageResponseDTO {
+        try await client.post(
+            "/auth/resend-forgot-password-otp",
+            body: ResendOtpRequestDTO(email: email))
+    }
+
+    /// Step 4 — set the new password. Requires a verified OTP that is still inside the
+    /// backend's 10-minute verification window, otherwise it fails with 400.
+    @discardableResult
+    static func resetPassword(
+        email: String,
+        newPassword: String,
+        confirmPassword: String
+    ) async throws -> MessageResponseDTO {
+        try await client.post(
+            "/auth/reset-password",
+            body: ResetPasswordRequestDTO(
+                email: email,
+                newPassword: newPassword,
+                confirmPassword: confirmPassword))
     }
 
     // MARK: Users

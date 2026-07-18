@@ -39,6 +39,7 @@ struct LoginView: View {
     @State private var appeared           = false
     @State private var showForgotPassword = false
     @State private var showSignUp         = false
+    @State private var showResetConfirmation = false
 
     @FocusState private var focusedField: LoginField?
     private enum LoginField { case username, password }
@@ -110,10 +111,22 @@ struct LoginView: View {
         .onTapGesture { focusedField = nil }
         .navigationBarHidden(true)
         .navigationDestination(isPresented: $showForgotPassword) {
-            ForgotPasswordView().environmentObject(lm)
+            // Carry the typed address forward, and let the flow report back so the
+            // confirmation lands on the screen the user returns to.
+            ForgotPasswordView(
+                prefilledEmail: username,
+                onPasswordReset: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        showResetConfirmation = true
+                    }
+                })
+                .environmentObject(lm)
         }
         .navigationDestination(isPresented: $showSignUp) {
-            SignUpView().environmentObject(lm)
+            // Sign-up no longer signs the user in, so it lands back here — prefill the
+            // address they just registered with.
+            SignUpView(onAccountCreated: { newEmail in username = newEmail })
+                .environmentObject(lm)
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.6).delay(0.1)) { appeared = true }
@@ -230,6 +243,30 @@ struct LoginView: View {
             }
             .opacity(appeared ? 1 : 0)
             .animation(.easeOut(duration: 0.5).delay(0.35), value: appeared)
+
+            // Confirmation after returning from a completed password reset.
+            if showResetConfirmation {
+                HStack(spacing: 9) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 15))
+                    Text(lm["fp_login_reset_success"])
+                        .font(.system(size: 13, weight: .medium))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .foregroundColor(.green)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.green.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.green.opacity(0.20), lineWidth: 1)
+                        )
+                )
+                .transition(.scale(scale: 0.97).combined(with: .opacity))
+            }
 
             // Error pill
             if !errorMsg.isEmpty {
@@ -490,7 +527,8 @@ struct LoginView: View {
     }
 
     private func attemptLogin() {
-        withAnimation { errorMsg = "" }
+        // The reset confirmation has served its purpose once they try the new password.
+        withAnimation { errorMsg = ""; showResetConfirmation = false }
         focusedField = nil          // Dismiss keyboard immediately on tap
         isLoading = true
         Task {
