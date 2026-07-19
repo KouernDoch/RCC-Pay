@@ -43,9 +43,9 @@ struct ContentView: View {
                             )
                             .padding(.top, 4)
 
-                            if let errorMessage = viewModel.errorMessage {
-                                errorBanner(errorMessage)
-                            }
+//                            if let errorMessage = viewModel.errorMessage {
+//                                errorBanner(errorMessage)
+//                            }
 
                             // Section header
                             HStack(spacing: 6) {
@@ -94,18 +94,18 @@ struct ContentView: View {
         }
     }
 
-    private func errorBanner(_ message: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-            Text(message).font(.system(size: 12, weight: .medium))
-            Spacer()
-        }
-        .foregroundColor(.orange)
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.orange.opacity(0.12)))
-        .padding(.horizontal)
-        .padding(.top, 10)
-    }
+//    private func errorBanner(_ message: String) -> some View {
+//        HStack(spacing: 8) {
+//            Image(systemName: "exclamationmark.triangle.fill")
+//            Text(message).font(.system(size: 12, weight: .medium))
+//            Spacer()
+//        }
+//        .foregroundColor(.orange)
+//        .padding(12)
+//        .background(RoundedRectangle(cornerRadius: 12).fill(Color.orange.opacity(0.12)))
+//        .padding(.horizontal)
+//        .padding(.top, 10)
+//    }
 
     private var emptyState: some View {
         VStack(spacing: 8) {
