@@ -8,6 +8,8 @@ import SwiftUI
 
 struct QRImage: View {
     var qrcodeImage = QrCodeImage()
+    var payamount : Double = 0
+    
     @State private var text = "00020101021129450016abaakhppxxx@abaa01090024902990208ABA Bank40390006abaP2P01129B44C11C847502090024902995204000053038405802KH5911KOUERN DOCH6010Phnom Penh630414D3"
     var body: some View {
         Image("KHQR")
@@ -23,7 +25,7 @@ struct QRImage: View {
                                 .font(.system(size: 14))
                                 .fontWeight(.bold)
                                 .padding(.top,20)
-                            Text("$ 0.00")
+                            Text(String(format: "$%.2f", payamount))
                                 .foregroundColor(.black)
                                 .fontWeight(.bold)
                             

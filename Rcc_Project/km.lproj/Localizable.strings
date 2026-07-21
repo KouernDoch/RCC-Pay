@@ -166,6 +166,7 @@
 "admin_status_no_invoice"      = "គ្មានវិក្កយបត្រ";
 "admin_status_paid"            = "បានបង់";
 "admin_status_issued_unpaid"   = "មិនទាន់បង់";
+"admin_status_partially_paid"  = "បង់មិនទាន់គ្រប់";
 "admin_status_pending"         = "កំពុងរង់ចាំ";
 "admin_unpaid_section"         = "មិនទាន់បង់ខែនេះ";
 "admin_unpaid_for"             = "មិនទាន់បង់ ·";
@@ -180,6 +181,8 @@
 "admin_search_users"          = "ស្វែងរកតាមឈ្មោះ";
 "admin_manage_users_no_results" = "រកមិនឃើញលទ្ធផលសម្រាប់ការស្វែងរក។";
 "admin_profile"               = "រូបប្រវត្តិ";
+"admin_profile_photo_set"     = "រូបភាពដាក់ដោយអ្នករស់នៅ";
+"admin_profile_photo_none"    = "មិនទាន់មានរូបភាព";
 "admin_name"                  = "ឈ្មោះ";
 "admin_email"                 = "អ៊ីមែល";
 "admin_payment_type"          = "ប្រភេទការទូទាត់";
@@ -195,6 +198,9 @@
 "edit"                        = "កែសម្រួល";
 "admin_invoice_no"             = "លេខ";
 "admin_invoice_date"           = "កាលបរិច្ឆេទ";
+"admin_invoice_paid_amount"    = "បានបង់";
+"admin_invoice_remaining"      = "នៅសល់";
+"admin_invoice_carried_forward" = "រួមបញ្ចូលសមតុល្យមិនទាន់បង់ពីខែមុន៖";
 "admin_payment_amounts"        = "ចំនួនទឹកប្រាក់";
 "admin_full_amount"            = "ការទូទាត់ពេញ";
 "admin_half_amount"            = "ការទូទាត់ពាក់កណ្តាល";
@@ -209,3 +215,11 @@
 "loading"                      = "កំពុងផ្ទុក…";
 "retry"                        = "ព្យាយាមម្តងទៀត";
 "mark_all_read"                = "សម្គាល់ថាបានអានទាំងអស់";
+
+/* Manual payment update */
+"update_payment_manually"      = "ធ្វើបច្ចុប្បន្នភាពការបង់ប្រាក់ដោយខ្លួនឯង";
+"update_payment_manually_hint" = "បានបង់តាម QR រួចហើយ? សូមបញ្ចូលចំនួនទឹកប្រាក់ដែលអ្នកបានផ្ទេរ ដើម្បីធ្វើបច្ចុប្បន្នភាពវិក្កយបត្ររបស់អ្នក។";
+"amount_paid"                  = "ចំនួនទឹកប្រាក់ដែលបានបង់";
+"use_remaining_amount"         = "ប្រើចំនួនទឹកប្រាក់នៅសល់";
+"cancel"                       = "បោះបង់";
+"confirm"                      = "បញ្ជាក់";

@@ -12,6 +12,10 @@ struct ContentView: View {
     @EnvironmentObject private var lm: LocalizationManager
     @EnvironmentObject private var session: SessionStore
     @StateObject private var viewModel = DashboardViewModel()
+    @State private var showManualUpdate = false
+
+    private let blue = Color(red: 0.22, green: 0.50, blue: 0.98)
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -42,6 +46,8 @@ struct ContentView: View {
                                 onConfirmPaid: { Task { await viewModel.payRemaining() } }
                             )
                             .padding(.top, 4)
+
+                            manualUpdateButton
 
 //                            if let errorMessage = viewModel.errorMessage {
 //                                errorBanner(errorMessage)
@@ -74,6 +80,7 @@ struct ContentView: View {
                                         CardPayment(
                                             name: paymentModel.name,
                                             image: paymentModel.image,
+                                            profileImage: paymentModel.profileImage,
                                             date: paymentModel.date,
                                             amount: paymentModel.amount
                                         )
@@ -107,6 +114,38 @@ struct ContentView: View {
 //        .padding(.top, 10)
 //    }
 
+    /// Lets the user record the payment themselves after they've paid with the QR code.
+    private var manualUpdateButton: some View {
+        Button { showManualUpdate = true } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(lm["update_payment_manually"])
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(blue)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(blue.opacity(0.4), lineWidth: 1)
+            )
+        }
+        .disabled(viewModel.isPaying)
+        .opacity(viewModel.isPaying ? 0.5 : 1)
+        .padding(.horizontal)
+        .padding(.top, 10)
+        .sheet(isPresented: $showManualUpdate) {
+            ManualPaymentUpdateSheet(
+                remainingAmount: viewModel.remainingAmount,
+                onSubmit: { amount in
+                    Task { await viewModel.pay(amount: amount) }
+                }
+            )
+            .environmentObject(lm)
+        }
+    }
+
     private var emptyState: some View {
         VStack(spacing: 8) {
             Image(systemName: "tray")
@@ -118,6 +157,73 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
+    }
+}
+
+/// Amount entry for a payment the user made outside the app (via the QR code).
+struct ManualPaymentUpdateSheet: View {
+
+    let remainingAmount: Double
+    let onSubmit: (Double) -> Void
+
+    @EnvironmentObject private var lm: LocalizationManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var amountText: String = ""
+    @FocusState private var amountFocused: Bool
+
+    private var amount: Double? {
+        let value = Double(amountText.trimmingCharacters(in: .whitespaces))
+        guard let value, value > 0 else { return nil }
+        return value
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        Text("$")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        TextField("0.00", text: $amountText)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 17, weight: .semibold))
+                            .focused($amountFocused)
+                    }
+                } header: {
+                    Text(lm["amount_paid"])
+                } footer: {
+                    Text(lm["update_payment_manually_hint"])
+                }
+
+                if remainingAmount > 0 {
+                    Section {
+                        Button(lm["use_remaining_amount"]) {
+                            amountText = String(format: "%.2f", remainingAmount)
+                        }
+                    }
+                }
+            }
+            .navigationTitle(lm["update_payment_manually"])
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(lm["cancel"]) { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(lm["confirm"]) {
+                        guard let amount else { return }
+                        onSubmit(amount)
+                        dismiss()
+                    }
+                    .disabled(amount == nil)
+                }
+            }
+            .onAppear {
+                if remainingAmount > 0 { amountText = String(format: "%.2f", remainingAmount) }
+                amountFocused = true
+            }
+        }
     }
 }
 

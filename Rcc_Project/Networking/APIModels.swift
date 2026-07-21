@@ -53,17 +53,49 @@ struct LoginResponseDTO: Decodable {
     let user: UserDTO
 }
 
+/// Settlement state of an invoice, mirroring the backend `InvoiceStatus` enum.
+enum InvoiceStatusDTO: String, Codable, Equatable {
+    case unpaid = "UNPAID"
+    case partiallyPaid = "PARTIALLY_PAID"
+    case paid = "PAID"
+    case overdue = "OVERDUE"
+}
+
 struct InvoiceDTO: Codable, Identifiable, Equatable {
     let invoiceId: Int
     let userId: Int
     let userEmail: String
+    /// Total billed: `currentCharge + previousUnpaidAmount`.
     let amount: Double
     let issueDate: String     // "yyyy-MM-dd"
     let paid: Bool
     let createdAt: String?
     let updatedAt: String?
 
+    // Carry-forward billing fields. Optional so the app still decodes responses
+    // from a backend that predates them.
+    let status: InvoiceStatusDTO?
+    /// This period's own charge, excluding any balance carried in from an earlier invoice.
+    let currentCharge: Double?
+    /// Balance absorbed from the user's previous unpaid invoice(s).
+    let previousUnpaidAmount: Double?
+    let paidAmount: Double?
+    /// Still owed on this invoice — the most a payment may be for.
+    let remainingAmount: Double?
+    /// Balance moved onto a later invoice (this invoice is closed).
+    let carriedForwardAmount: Double?
+
     var id: Int { invoiceId }
+
+    /// Falls back to the legacy `paid` flag when the backend omits `status`.
+    var settlementStatus: InvoiceStatusDTO {
+        status ?? (paid ? .paid : .unpaid)
+    }
+
+    var paidSoFar: Double { paidAmount ?? (paid ? amount : 0) }
+
+    /// What a payment against this invoice may not exceed.
+    var outstanding: Double { remainingAmount ?? max(amount - paidSoFar, 0) }
 }
 
 struct PaymentDTO: Codable, Identifiable, Equatable {
@@ -84,6 +116,9 @@ struct NotificationDTO: Codable, Identifiable, Equatable {
     let paymentId: Int?
     let senderId: Int
     let senderEmail: String
+    /// Sender's uploaded avatar URL. Nil when they never uploaded one, or when the backend
+    /// predates this field.
+    let senderProfileImage: String?
     let receiverId: Int
     let receiverEmail: String
     let title: String

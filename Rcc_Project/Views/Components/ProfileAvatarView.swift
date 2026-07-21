@@ -25,27 +25,30 @@ final class ProfileImageCache {
     func insert(_ image: UIImage, for url: URL) { cache.setObject(image, forKey: url as NSURL) }
 }
 
-struct ProfileAvatarView: View {
+/// Circular avatar for *any* user, loaded from a backend `profileImage` URL.
+///
+/// Use this wherever a photo belongs to someone other than the signed-in user (resident lists,
+/// payment feeds). For the current user, prefer ``ProfileAvatarView``, which resolves the URL
+/// from the session.
+struct RemoteAvatarView: View {
 
-    @EnvironmentObject private var session: SessionStore
-    @AppStorage("profileImageURL") private var profileImageURLString: String = ""
-
+    /// Backend `profileImage` value. Nil/empty renders the placeholder asset.
+    let urlString: String?
     let size: CGFloat
 
     /// A just-picked photo that hasn't finished uploading yet. Outranks the remote URL,
     /// which still resolves to the *old* image until the profile refresh lands.
     var localOverride: UIImage? = nil
 
+    /// Asset shown while nothing has loaded.
+    var placeholder: String = "Profile"
+
     @State private var loaded: UIImage?
     @State private var isLoading = false
 
-    /// Prefer the backend's persisted `profileImage`; fall back to the URL cached from
-    /// the last upload so the avatar survives a cold launch before the profile arrives.
     private var remoteURL: URL? {
-        if let remote = session.currentUser?.profileImage, !remote.isEmpty {
-            return URL(string: remote)
-        }
-        return profileImageURLString.isEmpty ? nil : URL(string: profileImageURLString)
+        guard let urlString, !urlString.isEmpty else { return nil }
+        return URL(string: urlString)
     }
 
     var body: some View {
@@ -55,7 +58,7 @@ struct ProfileAvatarView: View {
             } else if isLoading {
                 ZStack { Color.gray.opacity(0.15); ProgressView().scaleEffect(0.6) }
             } else {
-                Image("Profile").resizable().scaledToFill()
+                Image(placeholder).resizable().scaledToFill()
             }
         }
         .frame(width: size, height: size)
@@ -85,5 +88,30 @@ struct ProfileAvatarView: View {
         }
         ProfileImageCache.shared.insert(image, for: url)
         loaded = image
+    }
+}
+
+/// The signed-in user's avatar. Thin wrapper over ``RemoteAvatarView`` that resolves the URL
+/// from the session.
+struct ProfileAvatarView: View {
+
+    @EnvironmentObject private var session: SessionStore
+    @AppStorage("profileImageURL") private var profileImageURLString: String = ""
+
+    let size: CGFloat
+
+    var localOverride: UIImage? = nil
+
+    /// Prefer the backend's persisted `profileImage`; fall back to the URL cached from
+    /// the last upload so the avatar survives a cold launch before the profile arrives.
+    private var resolvedURLString: String? {
+        if let remote = session.currentUser?.profileImage, !remote.isEmpty {
+            return remote
+        }
+        return profileImageURLString.isEmpty ? nil : profileImageURLString
+    }
+
+    var body: some View {
+        RemoteAvatarView(urlString: resolvedURLString, size: size, localOverride: localOverride)
     }
 }

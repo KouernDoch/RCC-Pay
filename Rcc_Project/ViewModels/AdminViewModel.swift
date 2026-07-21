@@ -118,7 +118,7 @@ final class AdminViewModel: ObservableObject {
             paymentByInvoice[p.invoiceId] = p
             paymentIdByInvoiceId[p.invoiceId] = p.paymentId
         }
-        let userNameById = Dictionary(uniqueKeysWithValues: users.map { ($0.userId, $0.name) })
+        let userById = Dictionary(uniqueKeysWithValues: users.map { ($0.userId, $0) })
 
         // Residents = non-admin users
         let residentUsers = users.filter { $0.role == .user }
@@ -130,16 +130,23 @@ final class AdminViewModel: ObservableObject {
                 let (year, month) = Self.yearMonth(from: invoice.issueDate)
                 let key = adminPeriodKey(year: year, month: month)
                 let payment = paymentByInvoice[invoice.invoiceId]
-                let type: AdminInvoiceType = abs(invoice.amount - halfAmount) < 0.001 ? .half : .full
+                // Classify on this period's own charge — the total may also include a carried-forward
+                // balance, which would otherwise make every half invoice look like a full one.
+                let charge = invoice.currentCharge ?? invoice.amount
+                let type: AdminInvoiceType = abs(charge - halfAmount) < 0.001 ? .half : .full
+                let hasPayment = invoice.paidSoFar > 0
                 months[key] = AdminResidentMonthRecord(
                     invoiceIssued: true,
-                    isPaid: invoice.paid,
-                    paidDate: invoice.paid ? DisplayFormat.prettyDate(payment?.paidDate) : "-",
+                    isPaid: invoice.settlementStatus == .paid,
+                    paidDate: hasPayment ? DisplayFormat.prettyDate(payment?.paidDate) : "-",
                     invoiceType: type,
                     invoiceAmount: invoice.amount,
                     invoiceNumber: String(format: "INV-%04d-%02d-%03d", year, month, invoice.invoiceId),
                     invoiceDate: DisplayFormat.prettyDate(invoice.issueDate),
-                    invoiceId: invoice.invoiceId)
+                    invoiceId: invoice.invoiceId,
+                    paidAmount: invoice.paidSoFar,
+                    remainingAmount: invoice.outstanding,
+                    previousUnpaidAmount: invoice.previousUnpaidAmount ?? 0)
             }
             return AdminResident(
                 id: UUID(),
@@ -147,6 +154,7 @@ final class AdminViewModel: ObservableObject {
                 name: user.name,
                 email: user.email,
                 image: "Profile",
+                profileImage: user.profileImage,
                 defaultDue: AdminPaymentSettings.fullAmountString,
                 defaultPaymentType: storedPaymentType(for: user.userId),
                 months: months)
@@ -154,9 +162,11 @@ final class AdminViewModel: ObservableObject {
 
         // Daily payments feed
         paymentModels = payments.map { p in
-            PaymentModel(
+            let payer = userById[p.invoiceOwnerUserId]
+            return PaymentModel(
                 image: "Profile",
-                name: userNameById[p.invoiceOwnerUserId] ?? "User",
+                profileImage: payer?.profileImage,
+                name: payer?.name ?? "User",
                 date: DisplayFormat.prettyDate(p.paidDate),
                 amount: DisplayFormat.money(p.paidAmount))
         }
@@ -165,18 +175,28 @@ final class AdminViewModel: ObservableObject {
     // MARK: - Invoice issuing / status
 
     func issueInvoicesForCurrentPeriod() {
-        let key = currentKey
-        let targets = residents.filter { ($0.months[key]?.invoiceId == nil) }
         let issueDate = DisplayFormat.issueDate(year: filterYear, month: filterMonth)
+        let halfPayerIds = Set(
+            residents.filter { $0.defaultPaymentType == .half }.map(\.userId))
         Task {
             isLoading = true
             errorMessage = nil
             do {
-                for resident in targets {
-                    let amount = AdminPaymentSettings.amount(for: resident.defaultPaymentType)
-                    _ = try await BackendAPI.createInvoice(
-                        InvoiceCreateRequestDTO(userId: resident.userId, amount: amount, issueDate: issueDate))
+                // One call issues this period's invoice for every resident; the backend skips
+                // anyone who already has one and returns only what it created.
+                let result = try await BackendAPI.bulkIssue(
+                    amount: AdminPaymentSettings.fullAmount,
+                    issueDate: issueDate)
+
+                // Bulk issuing bills a single flat amount, so half payers are corrected after the
+                // fact. Any balance carried in from their previous invoice is still owed on top.
+                let halfAmount = AdminPaymentSettings.halfAmount
+                for invoice in result.invoices where halfPayerIds.contains(invoice.userId) {
+                    _ = try await BackendAPI.updateInvoice(
+                        id: invoice.invoiceId,
+                        InvoiceUpdateRequestDTO(amount: halfAmount + (invoice.previousUnpaidAmount ?? 0)))
                 }
+
                 await loadAll()
                 showIssuedAlert = true
             } catch {
@@ -202,30 +222,37 @@ final class AdminViewModel: ObservableObject {
                             userId: resident.userId,
                             amount: AdminPaymentSettings.amount(for: type),
                             issueDate: issueDate))
-                    } else if rec?.isPaid == true {
+                    } else if (rec?.paidAmount ?? 0) > 0 {
+                        // Covers partially paid invoices too, not just fully paid ones.
                         try await reversePayment(forInvoice: rec?.invoiceId)
                     }
 
+                case .partiallyPaid:
+                    // Not admin-selectable: it is the result of a partial payment. Nothing to do.
+                    break
+
                 case .paid:
                     var invoiceId = rec?.invoiceId
-                    var amount = rec?.invoiceAmount
+                    // Pay only what is still owed — the backend rejects anything above the remaining
+                    // balance, so sending the full total would fail on a partially paid invoice.
+                    var due = rec?.remainingAmount ?? 0
                     if invoiceId == nil {
                         let created = try await BackendAPI.createInvoice(InvoiceCreateRequestDTO(
                             userId: resident.userId,
                             amount: AdminPaymentSettings.amount(for: type),
                             issueDate: issueDate))
                         invoiceId = created.invoiceId
-                        amount = created.amount
+                        due = created.outstanding
                     }
-                    if let invoiceId, rec?.isPaid != true {
+                    if let invoiceId, due > 0 {
                         _ = try await BackendAPI.createPayment(
                             invoiceId: invoiceId,
-                            paidAmount: amount ?? AdminPaymentSettings.amount(for: type),
+                            paidAmount: due,
                             paidDate: DisplayFormat.nowLocalDateTime())
                     }
 
                 case .pending:
-                    if rec?.isPaid == true {
+                    if (rec?.paidAmount ?? 0) > 0 {
                         try await reversePayment(forInvoice: rec?.invoiceId)
                     }
                     if let invoiceId = rec?.invoiceId {
@@ -253,10 +280,14 @@ final class AdminViewModel: ObservableObject {
         if let idx = residents.firstIndex(where: { $0.id == resident.id }) {
             residents[idx].defaultPaymentType = newType
         }
-        // If there's an unpaid invoice this month, update its amount on the backend to match.
+        // If there's an untouched invoice this month, update its amount on the backend to match.
+        // Once money has been paid against it the backend refuses to drop the total below what is
+        // already settled, so leave those alone.
         let key = currentKey
-        if let rec = resident.months[key], let invoiceId = rec.invoiceId, rec.isPaid == false {
-            let amount = AdminPaymentSettings.amount(for: newType)
+        if let rec = resident.months[key], let invoiceId = rec.invoiceId, rec.paidAmount == 0 {
+            // The payment type sets this period's charge; any balance carried in from the previous
+            // month is still owed on top of it.
+            let amount = AdminPaymentSettings.amount(for: newType) + rec.previousUnpaidAmount
             Task {
                 do {
                     _ = try await BackendAPI.updateInvoice(id: invoiceId, InvoiceUpdateRequestDTO(amount: amount))

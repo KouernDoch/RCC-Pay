@@ -150,6 +150,7 @@ struct AdminTabView: View {
                                 CardPayment(
                                     name: paymentModel.name,
                                     image: paymentModel.image,
+                                    profileImage: paymentModel.profileImage,
                                     date: paymentModel.date,
                                     amount: paymentModel.amount
                                 )
@@ -420,9 +421,12 @@ struct AdminTabView: View {
         let rec = r.months[viewModel.currentKey]
         let status: String = {
             guard let rec else { return lm["admin_status_no_invoice"] }
-            if rec.isPaid { return lm["admin_status_paid"] }
-            if rec.invoiceIssued { return lm["admin_status_issued_unpaid"] }
-            return lm["admin_status_pending"]
+            switch rec.invoiceStatus {
+            case .paid: return lm["admin_status_paid"]
+            case .partiallyPaid: return lm["admin_status_partially_paid"]
+            case .issuedUnpaid: return lm["admin_status_issued_unpaid"]
+            case .pending: return lm["admin_status_pending"]
+            }
         }()
 
         return HStack {
@@ -481,6 +485,7 @@ struct AdminTabView: View {
                                 CardPayment(
                                     name: r.name,
                                     image: r.image,
+                                    profileImage: r.profileImage,
                                     date: "\(lm["admin_unpaid_for"]) \(viewModel.selectedMonthLabel) \(viewModel.filterYear)",
                                     amount: invoiceAmountText
                                 )
@@ -596,11 +601,7 @@ struct AdminTabView: View {
             // ── Top: avatar + info ───────────────────────────────
             HStack(alignment: .center, spacing: 14) {
                 ZStack(alignment: .bottomTrailing) {
-                    Image(resident.image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 52, height: 52)
-                        .clipShape(Circle())
+                    RemoteAvatarView(urlString: resident.profileImage, size: 52, placeholder: resident.image)
                         .overlay(Circle().stroke(Color.primary.opacity(0.08), lineWidth: 1.5))
 
                 }
@@ -685,6 +686,7 @@ struct AdminTabView: View {
             draftEmail: $viewModel.draftEmail,
             draftImage: $viewModel.draftImage,
             draftPaymentType: $viewModel.draftPaymentType,
+            profileImage: viewModel.residentToEdit?.profileImage,
             onCancel: {
                 viewModel.cancelEditSheet()
             },
@@ -712,6 +714,9 @@ private struct AdminEditUserSheetView: View {
     @Binding var draftImage: String
     @Binding var draftPaymentType: AdminInvoiceType
 
+    /// The resident's uploaded photo URL, shown read-only.
+    let profileImage: String?
+
     let onCancel: () -> Void
     let onSave: () -> Void
 
@@ -730,10 +735,19 @@ private struct AdminEditUserSheetView: View {
                 }
 
                 Section(lm["admin_profile"]) {
-                    Picker(lm["admin_profile"], selection: $draftImage) {
-                        Text("Profile").tag("Profile")
+                    // Read-only: the photo is set by the resident from their own profile screen,
+                    // so there is nothing for an admin to pick here.
+                    HStack(spacing: 12) {
+                        RemoteAvatarView(urlString: profileImage, size: 52, placeholder: draftImage)
+                            .overlay(Circle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                        Text(profileImage?.isEmpty == false
+                             ? lm["admin_profile_photo_set"]
+                             : lm["admin_profile_photo_none"])
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                        Spacer(minLength: 0)
                     }
-                    .pickerStyle(.segmented)
+                    .padding(.vertical, 4)
                 }
 
                 Section(lm["admin_payment_type"]) {

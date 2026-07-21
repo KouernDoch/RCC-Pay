@@ -27,6 +27,7 @@ struct AdminInvoiceCard: View {
         switch status {
         case .pending: return lm["admin_status_pending"]
         case .issuedUnpaid: return lm["admin_status_issued_unpaid"]
+        case .partiallyPaid: return lm["admin_status_partially_paid"]
         case .paid: return lm["admin_status_paid"]
         }
     }
@@ -35,6 +36,7 @@ struct AdminInvoiceCard: View {
         switch status {
         case .pending: return .gray
         case .issuedUnpaid: return Color(red: 1.00, green: 0.60, blue: 0.15)
+        case .partiallyPaid: return Color(red: 0.25, green: 0.55, blue: 0.96)
         case .paid: return Color(red: 0.18, green: 0.75, blue: 0.48)
         }
     }
@@ -52,6 +54,25 @@ struct AdminInvoiceCard: View {
     private var noText: String   { record?.invoiceNumber ?? "-" }
     private var dateText: String { record?.invoiceDate ?? "-" }
 
+    /// Shown once money has been paid but the invoice is not settled.
+    private var showsBalanceBreakdown: Bool {
+        currentStatus == .partiallyPaid
+    }
+
+    /// Shown when this invoice absorbed an unpaid balance from the previous month.
+    private var carriedInText: String? {
+        guard let carried = record?.previousUnpaidAmount, carried > 0 else { return nil }
+        return String(format: "%.2f", carried)
+    }
+
+    private var paidText: String {
+        String(format: "%.2f", record?.paidAmount ?? 0)
+    }
+
+    private var remainingText: String {
+        String(format: "%.2f", record?.remainingAmount ?? 0)
+    }
+
     private let blue = Color(red: 0.22, green: 0.50, blue: 0.98)
 
     // MARK: - Body
@@ -62,11 +83,7 @@ struct AdminInvoiceCard: View {
             // ── Header row ──────────────────────────────────────
             HStack(alignment: .center, spacing: 12) {
 
-                Image(resident.image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 46, height: 46)
-                    .clipShape(Circle())
+                RemoteAvatarView(urlString: resident.profileImage, size: 46, placeholder: resident.image)
                     .overlay(Circle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -103,6 +120,45 @@ struct AdminInvoiceCard: View {
                 statItem(label: lm["admin_invoice_date"], value: dateText, color: .primary, valueFontSize: 13)
             }
             .padding(.vertical, 16)
+
+            // ── Paid / remaining split, only while partially settled ────
+            if showsBalanceBreakdown {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.10))
+                    .frame(height: 1)
+                    .padding(.horizontal, 16)
+
+                HStack(spacing: 0) {
+                    statItem(
+                        label: lm["admin_invoice_paid_amount"],
+                        value: "$\(paidText)",
+                        color: Color(red: 0.18, green: 0.75, blue: 0.48),
+                        valueFontSize: 13)
+                    stripDivider
+                    statItem(
+                        label: lm["admin_invoice_remaining"],
+                        value: "$\(remainingText)",
+                        color: Color(red: 1.00, green: 0.60, blue: 0.15),
+                        valueFontSize: 13)
+                }
+                .padding(.vertical, 14)
+            }
+
+            // ── Carried-forward notice ──────────────────────────
+            if let carriedInText {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("\(lm["admin_invoice_carried_forward"]) $\(carriedInText)")
+                        .font(.system(size: 11, weight: .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                    Spacer(minLength: 0)
+                }
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 14)
+            }
         }
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -145,7 +201,7 @@ struct AdminInvoiceCard: View {
 
         if let onStatusSelected, isStatusEditable {
             Menu {
-                ForEach(AdminInvoiceStatus.allCases) { option in
+                ForEach(AdminInvoiceStatus.selectableCases) { option in
                     Button {
                         onStatusSelected(option)
                     } label: {
@@ -199,11 +255,16 @@ struct AdminInvoiceCard: View {
     VStack(spacing: 12) {
         AdminInvoiceCard(
             resident: AdminResident(id: UUID(), name: "Leng Chingmony", email: "leng.chingmony@example.com", image: "Profile", defaultDue: "38.00", defaultPaymentType: .full, months: [:]),
-            record: AdminResidentMonthRecord(invoiceIssued: true, isPaid: true, paidDate: "01 Jan 2026", invoiceType: .full, invoiceAmount: 38.0, invoiceNumber: "INV-2026-01-001", invoiceDate: "04 January 2026")
+            record: AdminResidentMonthRecord(invoiceIssued: true, isPaid: true, paidDate: "01 Jan 2026", invoiceType: .full, invoiceAmount: 38.0, invoiceNumber: "INV-2026-01-001", invoiceDate: "04 January 2026", paidAmount: 38.0, remainingAmount: 0)
         )
         AdminInvoiceCard(
             resident: AdminResident(id: UUID(), name: "Phan Sopheak", email: "phan.sopheak@example.com", image: "Profile", defaultDue: "38.00", defaultPaymentType: .half, months: [:]),
-            record: AdminResidentMonthRecord(invoiceIssued: true, isPaid: false, paidDate: "-", invoiceType: .full, invoiceAmount: 38.0, invoiceNumber: "INV-2026-01-004", invoiceDate: "04 January 2026")
+            record: AdminResidentMonthRecord(invoiceIssued: true, isPaid: false, paidDate: "-", invoiceType: .full, invoiceAmount: 38.0, invoiceNumber: "INV-2026-01-004", invoiceDate: "04 January 2026", paidAmount: 0, remainingAmount: 38.0)
+        )
+        // Partially paid, with a balance carried in from the previous month.
+        AdminInvoiceCard(
+            resident: AdminResident(id: UUID(), name: "Kouern Doch", email: "doch@rcc.com", image: "Profile", defaultDue: "38.00", defaultPaymentType: .full, months: [:]),
+            record: AdminResidentMonthRecord(invoiceIssued: true, isPaid: false, paidDate: "12 Feb 2026", invoiceType: .full, invoiceAmount: 58.0, invoiceNumber: "INV-2026-02-007", invoiceDate: "01 February 2026", paidAmount: 20.0, remainingAmount: 38.0, previousUnpaidAmount: 20.0)
         )
     }
     .padding(.vertical)

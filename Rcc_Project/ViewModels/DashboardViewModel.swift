@@ -72,12 +72,18 @@ final class DashboardViewModel: ObservableObject {
 
     /// Pay down the remaining balance for the selected month via the backend.
     func payRemaining() async {
-        guard remainingAmount > 0 else { return }
+        await pay(amount: remainingAmount)
+    }
+
+    /// Record a payment of an arbitrary amount the user entered manually
+    /// (e.g. after they scanned the QR code and paid a partial amount).
+    func pay(amount: Double) async {
+        guard amount > 0 else { return }
         isPaying = true
         errorMessage = nil
         do {
             _ = try await BackendAPI.payForCurrentUser(
-                amount: remainingAmount,
+                amount: amount,
                 paidDate: DisplayFormat.today())
             await load()
         } catch {
@@ -89,11 +95,15 @@ final class DashboardViewModel: ObservableObject {
     private func rebuildPaymentModels() {
         let prefix = DisplayFormat.monthPrefix(year: selectedYear, month: selectedMonthIndex)
         let name = UserDefaults.standard.string(forKey: "displayName") ?? "You"
+        // This feed is always the signed-in user's own payments, so reuse the avatar URL cached
+        // by the profile screen.
+        let avatar = UserDefaults.standard.string(forKey: "profileImageURL")
         paymentModels = allPayments
             .filter { ($0.paidDate ?? "").hasPrefix(prefix) }
             .map {
                 PaymentModel(
                     image: "Profile",
+                    profileImage: avatar,
                     name: name,
                     date: DisplayFormat.prettyDate($0.paidDate),
                     amount: DisplayFormat.money($0.paidAmount))

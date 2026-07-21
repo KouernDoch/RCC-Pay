@@ -60,30 +60,30 @@ struct PopUpViewQRCode: View {
                     }
                 }
                 
-                makeBody()
+                makeBody(payAmount: payAmount)
                 if let shareImage = shareImage{
                     ShareQRcode(image: shareImage)
                 }
 
-                if let onConfirmPaid, payAmount > 0 {
-                    Button {
-                        onConfirmPaid()
-                        isShowingSheet = false
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("I've paid $\(String(format: "%.2f", payAmount))")
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color(red: 0.18, green: 0.75, blue: 0.48)))
-                    }
-                    .padding(.top, 18)
-                }
+                // if let onConfirmPaid, payAmount > 0 {
+                //     Button {
+                //         onConfirmPaid()
+                //         isShowingSheet = false
+                //     } label: {
+                //         HStack(spacing: 8) {
+                //             Image(systemName: "checkmark.circle.fill")
+                //             Text("I've paid $\(String(format: "%.2f", payAmount))")
+                //                 .fontWeight(.semibold)
+                //         }
+                //         .foregroundColor(.white)
+                //         .padding(.horizontal, 24)
+                //         .padding(.vertical, 14)
+                //         .background(
+                //             RoundedRectangle(cornerRadius: 14)
+                //                 .fill(Color(red: 0.18, green: 0.75, blue: 0.48)))
+                //     }
+                //     .padding(.top, 18)
+                // }
                 Spacer()
             }
             .onAppear{
@@ -113,8 +113,8 @@ struct PopUpViewQRCode: View {
         }
     }
     
-    func makeBody() -> some View {
-        QRImage()
+    func makeBody(payAmount: Double) -> some View {
+        QRImage(payamount: payAmount)
             .cornerRadius(50)
     }
     func renderImage(){
@@ -132,7 +132,7 @@ struct PopUpViewQRCode: View {
     
     private func makeShareableView() -> some View {
         VStack {
-            makeBody()
+            makeBody(payAmount: payAmount)
                 .padding()
         }
     }

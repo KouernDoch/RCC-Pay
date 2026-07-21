@@ -166,6 +166,7 @@
 "admin_status_no_invoice"      = "No invoice";
 "admin_status_paid"            = "Paid";
 "admin_status_issued_unpaid"   = "Unpaid";
+"admin_status_partially_paid"  = "Partially paid";
 "admin_status_pending"         = "Pending";
 "admin_unpaid_section"         = "Unpaid this month";
 "admin_unpaid_for"             = "Unpaid ·";
@@ -180,6 +181,8 @@
 "admin_search_users"         = "Search by name";
 "admin_manage_users_no_results" = "No matching users found.";
 "admin_profile"               = "Profile";
+"admin_profile_photo_set"     = "Photo set by the resident";
+"admin_profile_photo_none"    = "No photo uploaded yet";
 "admin_name"                  = "Name";
 "admin_email"                 = "Email";
 "admin_payment_type"          = "Payment Type";
@@ -195,6 +198,9 @@
 "edit"                        = "Edit";
 "admin_invoice_no"             = "No";
 "admin_invoice_date"           = "Date";
+"admin_invoice_paid_amount"    = "Paid";
+"admin_invoice_remaining"      = "Remaining";
+"admin_invoice_carried_forward" = "Includes unpaid balance carried forward:";
 "admin_payment_amounts"        = "Payment Amounts";
 "admin_full_amount"            = "Full Payment";
 "admin_half_amount"            = "Half Payment";
@@ -209,3 +215,11 @@
 "loading"                      = "Loading…";
 "retry"                        = "Retry";
 "mark_all_read"                = "Mark all read";
+
+/* Manual payment update */
+"update_payment_manually"      = "Update Payment Manually";
+"update_payment_manually_hint" = "Already paid with the QR code? Enter the amount you transferred to update your bill.";
+"amount_paid"                  = "Amount Paid";
+"use_remaining_amount"         = "Use remaining amount";
+"cancel"                       = "Cancel";
+"confirm"                      = "Confirm";

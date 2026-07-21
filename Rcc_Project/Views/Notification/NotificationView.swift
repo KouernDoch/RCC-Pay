@@ -13,7 +13,10 @@ struct NotificationModel: Identifiable {
     let id = UUID()
     /// Backend notification id (nil for previews/mock rows).
     var backendId: Int? = nil
+    /// Local asset used as the placeholder when the sender has no uploaded photo.
     var image: String
+    /// Sender's uploaded avatar URL, from the backend `senderProfileImage`.
+    var profileImage: String? = nil
     var userName: String
     var payMonth: String
     var transactionDate: String
@@ -42,11 +45,7 @@ struct NotificationCard: View {
 
             // Profile photo + unread badge
             ZStack(alignment: .bottomTrailing) {
-                Image(item.image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 54, height: 54)
-                    .clipShape(Circle())
+                RemoteAvatarView(urlString: item.profileImage, size: 54, placeholder: item.image)
                     .overlay(
                         Circle()
                             .stroke(Color(.systemGroupedBackground), lineWidth: 2)
@@ -332,6 +331,7 @@ struct NotificationView: View {
                 NotificationModel(
                     backendId: dto.notificationId,
                     image: "Profile",
+                    profileImage: dto.senderProfileImage,
                     userName: dto.title,
                     payMonth: dto.message,
                     transactionDate: DisplayFormat.prettyDate(dto.createdAt),

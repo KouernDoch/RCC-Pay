@@ -14,7 +14,10 @@ struct Item: Identifiable {
 
 struct CardPayment: View {
     var name   = "Leng Chinmony"
+    /// Placeholder asset, used when `profileImage` is nil or fails to load.
     var image  = "Profile"
+    /// Backend `profileImage` URL for this person.
+    var profileImage: String? = nil
     var date   = "01 Jan, 2026"
     var amount = "38.00"
 
@@ -25,11 +28,7 @@ struct CardPayment: View {
         HStack(spacing: 12) {
 
             // Profile image
-            Image(image)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 44, height: 44)
-                .clipShape(Circle())
+            RemoteAvatarView(urlString: profileImage, size: 44, placeholder: image)
                 .overlay(Circle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
 
             // Name + date

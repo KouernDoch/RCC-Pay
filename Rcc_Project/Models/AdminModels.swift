@@ -25,16 +25,21 @@ enum AdminInvoiceTabFilter: String, CaseIterable, Identifiable, Hashable {
 enum AdminInvoiceStatus: String, CaseIterable, Identifiable, Hashable {
     case pending
     case issuedUnpaid
+    case partiallyPaid
     case paid
 
     var id: String { rawValue }
+
+    /// `partiallyPaid` is a consequence of a payment, not something an admin picks — it appears on the
+    /// badge but not in the status menu.
+    static var selectableCases: [AdminInvoiceStatus] { [.pending, .issuedUnpaid, .paid] }
 }
 
 extension AdminResidentMonthRecord {
     var invoiceStatus: AdminInvoiceStatus {
         if isPaid { return .paid }
-        if invoiceIssued { return .issuedUnpaid }
-        return .pending
+        if !invoiceIssued { return .pending }
+        return paidAmount > 0 ? .partiallyPaid : .issuedUnpaid
     }
 }
 
@@ -48,6 +53,12 @@ struct AdminResidentMonthRecord: Equatable {
     var invoiceDate: String? = nil
     /// Backend invoice id for this resident/month (nil when no invoice exists yet).
     var invoiceId: Int? = nil
+    /// Paid so far toward this invoice; less than `invoiceAmount` when partially paid.
+    var paidAmount: Double = 0
+    /// Still owed — the maximum a further payment may be for.
+    var remainingAmount: Double = 0
+    /// Balance carried in from the resident's previous unpaid invoice.
+    var previousUnpaidAmount: Double = 0
 }
 
 struct AdminResident: Identifiable {
@@ -56,7 +67,10 @@ struct AdminResident: Identifiable {
     var userId: Int = 0
     var name: String
     var email: String
+    /// Local asset used as the placeholder when the resident has no uploaded photo.
     var image: String
+    /// Backend `profileImage` URL for this resident. Nil when they never uploaded one.
+    var profileImage: String? = nil
     var defaultDue: String
     var defaultPaymentType: AdminInvoiceType
     var months: [String: AdminResidentMonthRecord]
