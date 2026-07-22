@@ -2,7 +2,13 @@
 //  CardViewMonthlyBill.swift
 //  Rcc_Project
 //
-//  Created by HRD on 12/31/25.
+//  The hero card on the user dashboard: what's owed this month, how much of it is
+//  settled, and the action to pay it.
+//
+//  All inputs and callbacks are unchanged. The redesign leads with the *outstanding*
+//  figure rather than giving three equal columns — that number is the only reason the
+//  user opened the app — and adds a progress track so a partial payment is legible at
+//  a glance instead of requiring arithmetic across two columns.
 //
 
 import SwiftUI
@@ -13,6 +19,7 @@ func generateYears(past: Int = 5, future: Int = 10) -> [Int] {
 }
 
 struct CardViewMonthlyBill: View {
+
     @Binding var selectedmonth: String
     @Binding var selectedYear: Int
 
@@ -27,141 +34,183 @@ struct CardViewMonthlyBill: View {
 
     @State private var showQR = false
     @EnvironmentObject private var lm: LocalizationManager
-    @Environment(\.colorScheme) private var colorScheme
 
     let years = generateYears()
 
-    private let blue  = Color(red: 0.22, green: 0.50, blue: 0.98)
-    private let mint  = Color(red: 0.18, green: 0.75, blue: 0.48)
-    private let amber = Color(red: 1.0,  green: 0.60, blue: 0.15)
+    // MARK: - Derived presentation
+
+    private var statusTone: DSTone { isFullyPaid ? .success : .warning }
+
+    private var periodLabel: String {
+        selectedmonth.isEmpty ? "—" : "\(selectedmonth) \(String(selectedYear))"
+    }
+
+    /// Amount strings arrive pre-formatted; parsed here only to draw the progress track.
+    private func amount(_ text: String) -> Double {
+        Double(text.replacingOccurrences(of: ",", with: "")) ?? 0
+    }
+
+    private var settledFraction: CGFloat {
+        let total = amount(totalDue)
+        guard total > 0 else { return isFullyPaid ? 1 : 0 }
+        return min(1, max(0, CGFloat(amount(paid) / total)))
+    }
+
+    /// The headline figure: what's left to pay, or the settled total once it's clear.
+    private var heroValue: String { isFullyPaid ? "$\(totalDue)" : "$\(remain)" }
+    private var heroCaption: String { isFullyPaid ? lm["paid"] : lm["remain"] }
 
     var body: some View {
-        VStack(spacing: 0) {
-
-            // ── Header ───────────────────────────────────────
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(lm["monthly_bill"])
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.gray)
-                    Text(selectedmonth.isEmpty ? "—" : "\(selectedmonth) \(String(selectedYear))")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.primary)
-                }
-
-                Spacer()
-
-                HStack(spacing: 8) {
-                    // Paid / Unpaid badge (reflects the current month's balance)
-                    HStack(spacing: 4) {
-                        Circle().fill(isFullyPaid ? mint : amber).frame(width: 6, height: 6)
-                        Text(isFullyPaid ? lm["paid"] : lm["unpaid"])
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(isFullyPaid ? mint : amber)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Capsule().fill((isFullyPaid ? mint : amber).opacity(colorScheme == .dark ? 0.2 : 0.1)))
-
-                    // Year picker
-                    Menu {
-                        Picker("Year", selection: $selectedYear) {
-                            ForEach(years, id: \.self) { Text(String($0)).tag($0) }
-                        }
-                    } label: {
-                        HStack(spacing: 3) {
-                            Text(String(selectedYear))
-                                .font(.system(size: 12, weight: .semibold))
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .foregroundColor(blue)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(blue.opacity(colorScheme == .dark ? 0.18 : 0.09)))
-                    }
-                }
-            }
-            .padding(.horizontal, 18)
-            .padding(.top, 16)
-            .padding(.bottom, 14)
-
-            // ── Stats grid ───────────────────────────────────
-            HStack(spacing: 0) {
-                statItem(label: lm["total_due"], value: totalDue, color: blue)
-                stripDivider
-                statItem(label: lm["remain"],    value: remain,   color: amber)
-                stripDivider
-                statItem(label: lm["paid"],      value: paid,     color: mint)
-            }
-            .padding(.vertical, 16)
-
-            // ── QR Button ────────────────────────────────────
-           
-            Button { showQR = true } label: {
-                HStack(spacing: 8) {
-                    if isPaying {
-                        ProgressView().tint(.white)
-                    } else {
-                        Image(systemName: "qrcode.viewfinder")
-                            .font(.system(size: 14, weight: .semibold))
-                    }
-                    Text(isFullyPaid ? lm["paid"] : lm["pay_via_qr"])
-                        .font(.system(size: 14, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(isFullyPaid ? mint : blue)
-                )
-            }
-            .disabled(isFullyPaid || isPaying)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
-            .fullScreenCover(isPresented: $showQR){
-                PopUpViewQRCode(
-                    isShowingSheet: $showQR,
-                    payAmount: remainingAmount,
-                    onConfirmPaid: remainingAmount > 0 ? onConfirmPaid : nil)
-            }
+        VStack(alignment: .leading, spacing: DS.Space.md) {
+            header
+            hero
+            progressTrack
+            DSStatStrip(stats: [
+                DSStat(label: lm["total_due"], value: "$\(totalDue)", tone: .brand),
+                DSStat(label: lm["paid"],      value: "$\(paid)",     tone: .success),
+                DSStat(label: lm["remain"],    value: "$\(remain)",   tone: .warning),
+            ])
+            payButton
         }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.clear, lineWidth: 1)
-        )
-        .shadow(color: colorScheme == .dark ? .clear : Color.black.opacity(0.07), radius: 12, x: 0, y: 4)
-        .padding(.horizontal)
+        .padding(DS.Space.md)
+        .dsSurface(radius: DS.Radius.lg, elevation: .medium)
+        .padding(.horizontal, DS.Space.page)
+        .fullScreenCover(isPresented: $showQR) {
+            PopUpViewQRCode(
+                isShowingSheet: $showQR,
+                payAmount: remainingAmount,
+                onConfirmPaid: remainingAmount > 0 ? onConfirmPaid : nil)
+        }
     }
 
-    // MARK: - Stat Item
+    // MARK: - Header
 
-    @ViewBuilder
-    private func statItem(label: String, value: String, color: Color) -> some View {
-        VStack(spacing: 5) {
-            Text("$\(value)")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundColor(color)
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(.secondary)
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(lm["monthly_bill"])
+                    .font(.dsCaption)
+                    .foregroundStyle(.secondary)
+                Text(periodLabel)
+                    .font(.dsTitle2)
+                    .foregroundStyle(.primary)
+                    .contentTransition(.opacity)
+            }
+
+            Spacer(minLength: DS.Space.xs)
+
+            VStack(alignment: .trailing, spacing: DS.Space.xs) {
+                DSStatusBadge(
+                    text: isFullyPaid ? lm["paid"] : lm["unpaid"],
+                    tone: statusTone)
+
+                yearPicker
+            }
         }
-        .frame(maxWidth: .infinity)
+        .animation(DS.Motion.fade, value: isFullyPaid)
     }
 
-    // MARK: - Strip Divider
+    private var yearPicker: some View {
+        Menu {
+            Picker(lm["admin_year"], selection: $selectedYear) {
+                ForEach(years, id: \.self) { Text(String($0)).tag($0) }
+            }
+        } label: {
+            DSMenuChip(title: String(selectedYear))
+        }
+        .accessibilityLabel(lm["admin_year"])
+        .accessibilityValue(String(selectedYear))
+    }
 
-    private var stripDivider: some View {
-        Rectangle()
-            .fill(Color.gray.opacity(0.13))
-            .frame(width: 1, height: 30)
+    // MARK: - Hero figure
+
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(heroCaption.uppercased())
+                .font(.system(.caption2, weight: .bold))
+                .kerning(0.8)
+                .foregroundStyle(.secondary)
+
+            Text(heroValue)
+                .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(isFullyPaid ? Color.dsSuccess : Color.primary)
+                .contentTransition(.numericText())
+                .dsNumeric()
+                .animation(DS.Motion.smooth, value: heroValue)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(heroCaption) \(heroValue)")
+    }
+
+    // MARK: - Progress
+
+    private var progressTrack: some View {
+        VStack(alignment: .leading, spacing: DS.Space.xxs + 2) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color(.systemFill))
+                    Capsule()
+                        .fill(isFullyPaid ? Color.dsSuccess : Color.dsBrand)
+                        .frame(width: geo.size.width * settledFraction)
+                }
+            }
+            .frame(height: 6)
+            .animation(DS.Motion.smooth, value: settledFraction)
+
+            Text("\(Int((settledFraction * 100).rounded()))% \(lm["paid"].lowercased())")
+                .font(.dsCaption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(lm["paid"])
+        .accessibilityValue("\(Int((settledFraction * 100).rounded())) percent")
+    }
+
+    // MARK: - Action
+
+    private var payButton: some View {
+        DSButton(
+            title: isFullyPaid ? lm["paid"] : lm["pay_via_qr"],
+            systemImage: isFullyPaid ? "checkmark.circle.fill" : "qrcode.viewfinder",
+            role: .primary,
+            isLoading: isPaying
+        ) {
+            showQR = true
+        }
+        .disabled(isFullyPaid || isPaying)
     }
 }
 
-#Preview {
-    ContentView()
-        .environmentObject(LocalizationManager())
+// MARK: - Preview
+
+#Preview("Partly paid") {
+    CardViewMonthlyBill(
+        selectedmonth: .constant("February"),
+        selectedYear: .constant(2026),
+        totalDue: "58.00",
+        remain: "38.00",
+        paid: "20.00",
+        isFullyPaid: false,
+        remainingAmount: 38)
+    .padding(.vertical)
+    .frame(maxHeight: .infinity, alignment: .top)
+    .background(Color.dsBackground)
+    .environmentObject(LocalizationManager())
+}
+
+#Preview("Settled") {
+    CardViewMonthlyBill(
+        selectedmonth: .constant("January"),
+        selectedYear: .constant(2026),
+        totalDue: "38.00",
+        remain: "0.00",
+        paid: "38.00",
+        isFullyPaid: true)
+    .padding(.vertical)
+    .frame(maxHeight: .infinity, alignment: .top)
+    .background(Color.dsBackground)
+    .environmentObject(LocalizationManager())
 }

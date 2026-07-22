@@ -23,7 +23,7 @@ struct FPResetStepView: View {
     private enum Field { case newPassword, confirmPassword }
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: DS.Space.lg) {
             FPHeading(title: lm["fp_step2_title"],
                       subtitle: lm["fp_step2_subtitle"],
                       palette: palette)
@@ -36,7 +36,7 @@ struct FPResetStepView: View {
                     isRevealed: $showNew,
                     field: .newPassword)
 
-                Divider().padding(.leading, 52)
+                DSFieldDivider()
 
                 passwordRow(
                     icon: "lock.shield.fill",
@@ -57,13 +57,13 @@ struct FPResetStepView: View {
             // password can no longer be set with this code, so offer the only way forward.
             if vm.mustRestart {
                 Button { vm.restart() } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: DS.Space.xxs + 2) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(.caption, weight: .semibold))
                         Text(lm["fp_request_new_code"])
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(.footnote, weight: .bold))
                     }
-                    .foregroundColor(palette.linkColor)
+                    .foregroundStyle(Color.dsBrand)
                 }
                 .buttonStyle(.plain)
             }
@@ -103,7 +103,7 @@ struct FPResetStepView: View {
                 }
             }
             .focused($focused, equals: field)
-            .font(.system(size: 15))
+            .font(.dsBody)
             .textContentType(.newPassword)
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
@@ -122,34 +122,21 @@ struct FPResetStepView: View {
     @ViewBuilder
     private var requirementChecklist: some View {
         if !vm.newPassword.isEmpty || !vm.confirmPassword.isEmpty {
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: DS.Space.xxs + 2) {
                 ForEach(vm.passwordRules) { rule in
-                    checkRow(text: lm[rule.labelKey], isMet: rule.isMet)
+                    DSRuleRow(text: lm[rule.labelKey], isSatisfied: rule.isMet)
                 }
                 if !vm.confirmPassword.isEmpty {
-                    checkRow(
+                    DSRuleRow(
                         text: vm.passwordsMatch ? lm["fp_passwords_match"] : lm["password_mismatch"],
-                        isMet: vm.passwordsMatch)
+                        isSatisfied: vm.passwordsMatch)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 4)
-            .animation(.easeInOut(duration: 0.2), value: vm.newPassword)
-            .animation(.easeInOut(duration: 0.2), value: vm.confirmPassword)
+            .padding(.leading, DS.Space.xxs)
+            .animation(DS.Motion.fade, value: vm.newPassword)
+            .animation(DS.Motion.fade, value: vm.confirmPassword)
             .transition(.opacity.combined(with: .move(edge: .top)))
-        }
-    }
-
-    private func checkRow(text: String, isMet: Bool) -> some View {
-        HStack(spacing: 7) {
-            Image(systemName: isMet ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 13))
-                .foregroundColor(isMet ? .green : .secondary.opacity(0.45))
-            Text(text)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(isMet ? .green : .secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
         }
     }
 

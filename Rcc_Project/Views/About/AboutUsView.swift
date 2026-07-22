@@ -2,30 +2,32 @@
 //  AboutUsView.swift
 //  RCC Pay
 //
+//  App and author information. Content is unchanged; the layout now uses the shared
+//  card/row vocabulary, and the contact rows are actually actionable — the email
+//  address was previously plain text you couldn't do anything with.
+//
 
 import SwiftUI
 
 struct AboutUsView: View {
 
     @EnvironmentObject private var lm: LocalizationManager
-    @Environment(\.colorScheme) private var colorScheme
 
-    private let blue   = Color(red: 0.22, green: 0.50, blue: 0.98)
-    private let purple = Color(red: 0.47, green: 0.42, blue: 0.96)
+    private let contactEmail = "dochkouern@gmail.com"
 
     var body: some View {
         ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.dsBackground.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 28) {
-                    appHeroCard
-                    creatorCard
-                    appInfoCard
-                    Spacer(minLength: 20)
+                VStack(spacing: DS.Space.lg) {
+                    appHero
+                    creatorSection
+                    appInfoSection
                 }
-                .padding(.top, 16)
-                .padding(.bottom, 40)
+                .padding(.horizontal, DS.Space.page)
+                .padding(.top, DS.Space.md)
+                .padding(.bottom, DS.Space.xxl)
             }
         }
         .navigationTitle(lm["about_us"])
@@ -33,192 +35,160 @@ struct AboutUsView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
     }
 
-    // MARK: - App Hero
+    // MARK: - Hero
 
-    private var appHeroCard: some View {
-        VStack(spacing: 0) {
-            // Gradient banner
-            ZStack {
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.18, green: 0.46, blue: 0.98),
-                                Color(red: 0.42, green: 0.68, blue: 1.0)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+    private var appHero: some View {
+        VStack(spacing: DS.Space.sm) {
+            // The app mark, at the size and corner radius iOS uses for an app icon.
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.dsBrand)
+                .frame(width: 76, height: 76)
+                .overlay(
+                    Image(systemName: "creditcard.fill")
+                        .font(.system(size: 32, weight: .semibold))
+                        .foregroundStyle(.white)
+                )
+                .accessibilityHidden(true)
 
-                Circle().fill(Color.white.opacity(0.06)).frame(width: 160).offset(x: 110, y: -50)
-                Circle().fill(Color.white.opacity(0.06)).frame(width: 100).offset(x: -110, y: 30)
-
-                VStack(spacing: 10) {
-                    // App icon placeholder
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(Color.white.opacity(0.2))
-                            .frame(width: 72, height: 72)
-                        Image(systemName: "creditcard.fill")
-                            .font(.system(size: 30, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
-                    .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 4)
-
-                    Text("RCC Pay")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.white)
-
-                    Text("\(lm["version"]) 1.0.0")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                .padding(.vertical, 32)
+            VStack(spacing: 2) {
+                Text("RCC Pay")
+                    .font(.dsTitle)
+                    .foregroundStyle(.primary)
+                Text("\(lm["version"]) 1.0.0")
+                    .font(.dsSubtext)
+                    .foregroundStyle(.secondary)
             }
-            .frame(height: 200)
         }
-        .padding(.horizontal)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DS.Space.lg)
+        .accessibilityElement(children: .combine)
     }
 
-    // MARK: - App Description Card
+    // MARK: - Creator
 
-    private var appInfoCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionLabel(lm["about_the_app"].uppercased())
+    private var creatorSection: some View {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+            DSGroupCaption(text: lm["creator"])
+                .padding(.horizontal, DS.Space.xxs)
 
-            cardContainer {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 12) {
-                        iconBadge(icon: "house.fill", color: blue)
+            DSGroupedCard {
+                HStack(spacing: DS.Space.sm + 2) {
+                    DSMonogram(name: "Kouern Doch", size: .lg)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Kouern Doch")
+                            .font(.dsHeadline)
+                            .foregroundStyle(.primary)
+                        Text("IT Instructor")
+                            .font(.dsCaption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: DS.Space.xs)
+
+                    VStack(spacing: 0) {
+                        Text("24")
+                            .font(.system(.headline, design: .rounded, weight: .bold))
+                            .foregroundStyle(Color.dsBrand)
+                        Text("yrs")
+                            .font(.system(.caption2))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(width: 44, height: 44)
+                    .dsAccentSurface(.dsBrand, radius: DS.Radius.xs)
+                }
+                .padding(DS.Space.md)
+                .accessibilityElement(children: .combine)
+
+                DSRowDivider()
+
+                infoRow(
+                    icon: "building.2.fill",
+                    tint: .dsBrand,
+                    label: lm["organization"],
+                    value: "Korea Software HRD")
+
+                DSRowDivider()
+
+                // Tapping opens Mail with the address filled in.
+                Link(destination: URL(string: "mailto:\(contactEmail)")!) {
+                    infoRow(
+                        icon: "envelope.fill",
+                        tint: .dsSuccess,
+                        label: lm["email"],
+                        value: contactEmail,
+                        showsChevron: true)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: - App description
+
+    private var appInfoSection: some View {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+            DSGroupCaption(text: lm["about_the_app"])
+                .padding(.horizontal, DS.Space.xxs)
+
+            DSCard {
+                VStack(alignment: .leading, spacing: DS.Space.sm) {
+                    HStack(spacing: DS.Space.sm) {
+                        DSIconBadge(systemName: "house.fill", tint: .dsBrand)
                         Text("RCC Pay")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.dsHeadline)
                     }
+
                     Text(lm["rcc_pay_description"])
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .lineSpacing(4)
-                }
-                .padding(16)
-            }
-        }
-        .padding(.horizontal)
-    }
-
-    // MARK: - Creator Card
-
-    private var creatorCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionLabel(lm["creator"].uppercased())
-
-            cardContainer {
-                VStack(spacing: 0) {
-                    // Profile banner
-                    HStack(spacing: 14) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [purple, blue],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 56, height: 56)
-                            Text("KD")
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.white)
-                        }
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Kouern Doch")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.primary)
-                            Text("IT Instructor")
-                                .font(.system(size: 13))
-                                .foregroundColor(.secondary)
-                        }
-
-                        Spacer()
-
-                        // Age badge
-                        VStack(spacing: 2) {
-                            Text("24")
-                                .font(.system(size: 17, weight: .bold))
-                                .foregroundColor(blue)
-                            Text("yrs")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(width: 44, height: 44)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(blue.opacity(colorScheme == .dark ? 0.18 : 0.08))
-                        )
-                    }
-                    .padding(16)
-
-                    Divider().padding(.horizontal, 16)
-
-                    // Detail rows
-            creatorInfoRow(icon: "building.2.fill", color: purple, label: lm["organization"], value: "Korea Software HRD")
-            Divider().padding(.horizontal, 16)
-            creatorInfoRow(icon: "envelope.fill",   color: blue,   label: lm["email"],        value: "dochkouern@gmail.com")
+                        .font(.dsSubtext)
+                        .foregroundStyle(.secondary)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
-        .padding(.horizontal)
     }
 
-    // MARK: - Helper Views
+    // MARK: - Helpers
 
-    private func creatorInfoRow(icon: String, color: Color, label: String, value: String) -> some View {
-        HStack(spacing: 12) {
-            iconBadge(icon: icon, color: color, size: 32)
-            VStack(alignment: .leading, spacing: 2) {
+    private func infoRow(
+        icon: String,
+        tint: Color,
+        label: String,
+        value: String,
+        showsChevron: Bool = false
+    ) -> some View {
+        HStack(spacing: DS.Space.sm + 2) {
+            DSIconBadge(systemName: icon, tint: tint, size: DS.IconSlot.sm + 4)
+
+            VStack(alignment: .leading, spacing: 1) {
                 Text(label)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .font(.dsCaption)
+                    .foregroundStyle(.secondary)
                 Text(value)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
+                    .font(.system(.subheadline, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            Spacer()
+
+            Spacer(minLength: DS.Space.xs)
+
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-
-    private func iconBadge(icon: String, color: Color, size: CGFloat = 36) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.28)
-                .fill(color.opacity(colorScheme == .dark ? 0.22 : 0.12))
-                .frame(width: size, height: size)
-            Image(systemName: icon)
-                .font(.system(size: size * 0.42, weight: .medium))
-                .foregroundColor(color)
-        }
-    }
-
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11, weight: .bold))
-            .foregroundColor(.secondary)
-            .kerning(1)
-    }
-
-    @ViewBuilder
-    private func cardContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 0) { content() }
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.clear, lineWidth: 1)
-            )
-            .shadow(color: colorScheme == .dark ? .clear : Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
+        .padding(.horizontal, DS.Space.md)
+        .padding(.vertical, DS.Space.sm)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }
+
+// MARK: - Preview
 
 #Preview {
     NavigationStack {

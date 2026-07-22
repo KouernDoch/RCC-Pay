@@ -223,3 +223,10 @@
 "use_remaining_amount"         = "ប្រើចំនួនទឹកប្រាក់នៅសល់";
 "cancel"                       = "បោះបង់";
 "confirm"                      = "បញ្ជាក់";
+
+/* QR payment sheet */
+"qr_title"             = "កូដ QR";
+"qr_instruction"       = "ប្រើ QR នេះ ដើម្បីបង់ប្រាក់សម្រាប់ការស្នាក់នៅនិងថ្លៃម្ហូបរបស់លោកអ្នកនៅ RCC។";
+"qr_share"             = "ផ្ញើរ QR";
+"qr_amount_due"        = "ចំនួនទឹកប្រាក់ត្រូវបង់";
+"qr_close"             = "បិទ";

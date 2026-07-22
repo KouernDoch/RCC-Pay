@@ -2,7 +2,13 @@
 //  ContentView.swift
 //  Rcc_Project
 //
-//  Created by HRD on 12/31/25.
+//  The resident's dashboard: this month's bill, and the payments made against it.
+//
+//  Data flow is untouched — the same `DashboardViewModel`, the same load / reload /
+//  pay calls. What changed is the presentation of the states around that data: the
+//  first load now shows skeletons shaped like the real content instead of a bare
+//  screen, a failed refresh surfaces inline (it was commented out before) rather
+//  than failing silently, and the empty feed explains itself.
 //
 
 import SwiftUI
@@ -14,12 +20,16 @@ struct ContentView: View {
     @StateObject private var viewModel = DashboardViewModel()
     @State private var showManualUpdate = false
 
-    private let blue = Color(red: 0.22, green: 0.50, blue: 0.98)
+    /// True only for the very first load, when there's nothing to show underneath.
+    /// A pull-to-refresh keeps the existing content and uses the section spinner instead.
+    private var isInitialLoad: Bool {
+        viewModel.isLoading && viewModel.summary == nil && viewModel.paymentModels.isEmpty
+    }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemGroupedBackground).ignoresSafeArea()
+                Color.dsBackground.ignoresSafeArea()
 
                 VStack(alignment: .leading, spacing: 0) {
 
@@ -31,66 +41,20 @@ struct ContentView: View {
                         }
                     )
 
-                    // ── Scrollable content ────────────────────────
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 0) {
-                            CardViewMonthlyBill(
-                                selectedmonth: $viewModel.selectedMonth,
-                                selectedYear: $viewModel.selectedYear,
-                                totalDue: viewModel.totalDue,
-                                remain: viewModel.remaining,
-                                paid: viewModel.paid,
-                                isFullyPaid: viewModel.isFullyPaid,
-                                remainingAmount: viewModel.remainingAmount,
-                                isPaying: viewModel.isPaying,
-                                onConfirmPaid: { Task { await viewModel.payRemaining() } }
-                            )
-                            .padding(.top, 4)
-
-                            manualUpdateButton
-
-//                            if let errorMessage = viewModel.errorMessage {
-//                                errorBanner(errorMessage)
-//                            }
-
-                            // Section header
-                            HStack(spacing: 6) {
-                                Rectangle()
-                                    .fill(Color(red: 0.22, green: 0.50, blue: 0.98))
-                                    .frame(width: 3, height: 14)
-                                    .clipShape(Capsule())
-                                Text(lm["daily_payment"])
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(Color.primary)
-                                Spacer()
-                                if viewModel.isLoading {
-                                    ProgressView().scaleEffect(0.7)
-                                }
-                            }
-                            .padding(.horizontal)
-                            .padding(.top, 14)
-                            .padding(.bottom, 6)
-
-                            // Cards
-                            if viewModel.paymentModels.isEmpty && !viewModel.isLoading {
-                                emptyState
+                        VStack(spacing: DS.Space.md) {
+                            if isInitialLoad {
+                                loadingContent
                             } else {
-                                VStack(spacing: 8) {
-                                    ForEach(viewModel.paymentModels) { paymentModel in
-                                        CardPayment(
-                                            name: paymentModel.name,
-                                            image: paymentModel.image,
-                                            profileImage: paymentModel.profileImage,
-                                            date: paymentModel.date,
-                                            amount: paymentModel.amount
-                                        )
-                                    }
-                                }
-                                .padding(.bottom, 20)
+                                loadedContent
                             }
                         }
+                        .padding(.top, DS.Space.xs)
+                        .padding(.bottom, DS.Space.xxl)
+                        .animation(DS.Motion.smooth, value: isInitialLoad)
                     }
                     .refreshable { await viewModel.load() }
+                    .scrollDismissesKeyboard(.immediately)
                 }
                 .onChange(of: viewModel.selectedYear)  { _, _ in Task { await viewModel.reloadSummary() } }
                 .onChange(of: viewModel.selectedMonth) { _, _ in Task { await viewModel.reloadSummary() } }
@@ -101,40 +65,101 @@ struct ContentView: View {
         }
     }
 
-//    private func errorBanner(_ message: String) -> some View {
-//        HStack(spacing: 8) {
-//            Image(systemName: "exclamationmark.triangle.fill")
-//            Text(message).font(.system(size: 12, weight: .medium))
-//            Spacer()
-//        }
-//        .foregroundColor(.orange)
-//        .padding(12)
-//        .background(RoundedRectangle(cornerRadius: 12).fill(Color.orange.opacity(0.12)))
-//        .padding(.horizontal)
-//        .padding(.top, 10)
-//    }
+    // MARK: - Loading
+
+    private var loadingContent: some View {
+        VStack(spacing: DS.Space.md) {
+            DSSkeletonCard()
+                .padding(.horizontal, DS.Space.page)
+            DSSkeletonList(count: 3)
+                .padding(.horizontal, DS.Space.page)
+        }
+        .transition(.opacity)
+    }
+
+    // MARK: - Loaded
+
+    private var loadedContent: some View {
+        VStack(spacing: DS.Space.md) {
+
+            CardViewMonthlyBill(
+                selectedmonth: $viewModel.selectedMonth,
+                selectedYear: $viewModel.selectedYear,
+                totalDue: viewModel.totalDue,
+                remain: viewModel.remaining,
+                paid: viewModel.paid,
+                isFullyPaid: viewModel.isFullyPaid,
+                remainingAmount: viewModel.remainingAmount,
+                isPaying: viewModel.isPaying,
+                onConfirmPaid: { Task { await viewModel.payRemaining() } }
+            )
+
+            manualUpdateButton
+
+            // Previously commented out, so a failed refresh left the user staring at
+            // stale figures with no explanation.
+            if let errorMessage = viewModel.errorMessage {
+                DSInlineError(message: errorMessage) {
+                    Task { await viewModel.load() }
+                }
+                .padding(.horizontal, DS.Space.page)
+            }
+
+            paymentSection
+        }
+        .transition(.opacity)
+    }
+
+    // MARK: - Payment feed
+
+    private var paymentSection: some View {
+        VStack(spacing: DS.Space.xs) {
+            DSSectionHeader(
+                title: lm["daily_payment"],
+                subtitle: viewModel.paymentModels.isEmpty
+                    ? nil
+                    : "\(viewModel.paymentModels.count)",
+                isLoading: viewModel.isLoading
+            )
+            .padding(.horizontal, DS.Space.page)
+            .padding(.top, DS.Space.xxs)
+
+            if viewModel.paymentModels.isEmpty {
+                DSEmptyState(
+                    title: lm["no_payments"],
+                    message: lm["update_payment_manually_hint"],
+                    systemImage: "tray")
+            } else {
+                LazyVStack(spacing: DS.Space.xs) {
+                    ForEach(viewModel.paymentModels) { paymentModel in
+                        CardPayment(
+                            name: paymentModel.name,
+                            image: paymentModel.image,
+                            profileImage: paymentModel.profileImage,
+                            date: paymentModel.date,
+                            amount: paymentModel.amount
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+                .animation(DS.Motion.smooth, value: viewModel.paymentModels.count)
+            }
+        }
+    }
+
+    // MARK: - Manual update
 
     /// Lets the user record the payment themselves after they've paid with the QR code.
     private var manualUpdateButton: some View {
-        Button { showManualUpdate = true } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: 13, weight: .semibold))
-                Text(lm["update_payment_manually"])
-                    .font(.system(size: 14, weight: .semibold))
-            }
-            .foregroundColor(blue)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(blue.opacity(0.4), lineWidth: 1)
-            )
+        DSButton(
+            title: lm["update_payment_manually"],
+            systemImage: "square.and.pencil",
+            role: .secondary
+        ) {
+            showManualUpdate = true
         }
         .disabled(viewModel.isPaying)
-        .opacity(viewModel.isPaying ? 0.5 : 1)
-        .padding(.horizontal)
-        .padding(.top, 10)
+        .padding(.horizontal, DS.Space.page)
         .sheet(isPresented: $showManualUpdate) {
             ManualPaymentUpdateSheet(
                 remainingAmount: viewModel.remainingAmount,
@@ -145,20 +170,9 @@ struct ContentView: View {
             .environmentObject(lm)
         }
     }
-
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "tray")
-                .font(.system(size: 28))
-                .foregroundColor(.secondary)
-            Text(lm["no_payments"])
-                .font(.system(size: 13))
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-    }
 }
+
+// MARK: - Manual payment sheet
 
 /// Amount entry for a payment the user made outside the app (via the QR code).
 struct ManualPaymentUpdateSheet: View {
@@ -177,31 +191,47 @@ struct ManualPaymentUpdateSheet: View {
         return value
     }
 
+    /// Guard against recording more than is actually owed.
+    private var exceedsRemaining: Bool {
+        guard let amount, remainingAmount > 0 else { return false }
+        return amount > remainingAmount
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        Text("$")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(.secondary)
-                        TextField("0.00", text: $amountText)
-                            .keyboardType(.decimalPad)
-                            .font(.system(size: 17, weight: .semibold))
-                            .focused($amountFocused)
-                    }
-                } header: {
-                    Text(lm["amount_paid"])
-                } footer: {
-                    Text(lm["update_payment_manually_hint"])
-                }
+            ZStack {
+                Color.dsBackground.ignoresSafeArea()
 
-                if remainingAmount > 0 {
-                    Section {
-                        Button(lm["use_remaining_amount"]) {
-                            amountText = String(format: "%.2f", remainingAmount)
+                ScrollView {
+                    VStack(spacing: DS.Space.md) {
+                        amountCard
+
+                        if remainingAmount > 0 {
+                            DSButton(
+                                title: lm["use_remaining_amount"],
+                                systemImage: "equal.circle",
+                                role: .secondary
+                            ) {
+                                withAnimation(DS.Motion.quick) {
+                                    amountText = String(format: "%.2f", remainingAmount)
+                                }
+                            }
                         }
+
+                        if exceedsRemaining {
+                            DSCallout(
+                                message: "That's more than the $\(String(format: "%.2f", remainingAmount)) still outstanding.",
+                                tone: .warning)
+                        }
+
+                        Text(lm["update_payment_manually_hint"])
+                            .font(.dsCaption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, DS.Space.xxs)
                     }
+                    .padding(DS.Space.page)
+                    .animation(DS.Motion.fade, value: exceedsRemaining)
                 }
             }
             .navigationTitle(lm["update_payment_manually"])
@@ -216,6 +246,7 @@ struct ManualPaymentUpdateSheet: View {
                         onSubmit(amount)
                         dismiss()
                     }
+                    .fontWeight(.semibold)
                     .disabled(amount == nil)
                 }
             }
@@ -225,7 +256,36 @@ struct ManualPaymentUpdateSheet: View {
             }
         }
     }
+
+    /// A large, centred amount field — the only thing this sheet exists to collect.
+    private var amountCard: some View {
+        VStack(spacing: DS.Space.xs) {
+            Text(lm["amount_paid"].uppercased())
+                .font(.system(.caption2, weight: .bold))
+                .kerning(0.8)
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .firstTextBaseline, spacing: DS.Space.xxs) {
+                Text("$")
+                    .font(.system(.title, design: .rounded, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                TextField("0.00", text: $amountText)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.center)
+                    .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    .monospacedDigit()
+                    .focused($amountFocused)
+                    .fixedSize()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DS.Space.lg)
+        .padding(.horizontal, DS.Space.md)
+        .dsSurface(radius: DS.Radius.lg, elevation: .low)
+    }
 }
+
+// MARK: - Preview
 
 #Preview {
     ContentView()

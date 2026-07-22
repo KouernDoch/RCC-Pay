@@ -67,21 +67,22 @@ struct Rcc_ProjectApp: App {
 }
 
 /// Lightweight splash shown while a persisted session token is validated on launch.
+/// Matches the auth header, so launching straight into the login screen is a
+/// continuation rather than a cut.
 private struct LaunchSplashView: View {
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.10, green: 0.30, blue: 0.88),
-                         Color(red: 0.22, green: 0.52, blue: 1.0)],
-                startPoint: .topLeading, endPoint: .bottomTrailing)
-                .ignoresSafeArea()
-            VStack(spacing: 18) {
+            Color.dsBrand.ignoresSafeArea()
+
+            VStack(spacing: DS.Space.lg) {
                 Image(systemName: "creditcard.fill")
                     .font(.system(size: 44, weight: .semibold))
                     .foregroundStyle(.white)
                 ProgressView().tint(.white)
             }
         }
+        .accessibilityElement()
+        .accessibilityLabel("Loading RCC Pay")
     }
 }
 

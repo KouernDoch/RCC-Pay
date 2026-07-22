@@ -2,58 +2,55 @@
 //  FPDesignKit.swift
 //  RCC Pay
 //
-//  Shared chrome for the forgot-password flow. This styling used to be inlined in
-//  ForgotPasswordView; it lives here so all four step screens render identical field
-//  rows, buttons and banners without copy-paste drift.
+//  Shared chrome for the forgot-password flow.
+//
+//  These types keep the exact same names and signatures they had before, so the four
+//  step views did not have to be restructured to adopt the new look. Internally they
+//  are now thin adapters over the app-wide design system — `FPPrimaryButton` is a
+//  `DSButton`, `FPErrorBanner` is a `DSCallout`, and the palette resolves to the same
+//  `Color.dsBrand` every other screen uses.
+//
+//  The multi-stop gradients, blurred button glow and wave shape are gone; `FPBottomWave`
+//  was removed along with them, since `AuthScaffold` now draws the header for all three
+//  auth screens.
 //
 
 import SwiftUI
 
 // MARK: - Palette
 
-/// The auth-screen palette. Base hues are shared with LoginView / SignUpView; the
-/// instance members resolve the light/dark variants.
+/// Retained as the flow's colour vocabulary, but every value now resolves to a
+/// design-system token rather than its own hard-coded RGB.
 struct FPPalette {
 
-    static let navy = Color(red: 0.05, green: 0.15, blue: 0.55)
-    static let blue = Color(red: 0.16, green: 0.44, blue: 0.96)
-    static let sky  = Color(red: 0.48, green: 0.72, blue: 1.00)
+    static let navy = Color.dsBrand
+    static let blue = Color.dsBrand
+    static let sky  = Color.dsBrandSoft
 
     let isDark: Bool
 
     init(_ scheme: ColorScheme) { isDark = scheme == .dark }
 
+    /// Flat rather than gradient now — a gradient on 22pt text was doing nothing but
+    /// costing contrast.
     var titleGradient: LinearGradient {
-        isDark
-        ? LinearGradient(colors: [Color(red: 0.60, green: 0.82, blue: 1.00), .white],
-                         startPoint: .leading, endPoint: .trailing)
-        : LinearGradient(colors: [Color(red: 0.08, green: 0.20, blue: 0.60), Self.blue],
-                         startPoint: .leading, endPoint: .trailing)
+        LinearGradient(colors: [.primary, .primary], startPoint: .leading, endPoint: .trailing)
     }
 
-    var subtitleColor: Color {
-        isDark ? Color(red: 0.55, green: 0.78, blue: 1.00) : Self.blue.opacity(0.6)
-    }
+    var subtitleColor: Color { .secondary }
 
-    var linkColor: Color { isDark ? Self.sky : Self.blue }
+    var linkColor: Color { .dsBrand }
 
     var pageBackground: LinearGradient {
-        LinearGradient(
-            colors: isDark
-                ? [Color(red: 0.04, green: 0.07, blue: 0.16),
-                   Color(red: 0.07, green: 0.11, blue: 0.24)]
-                : [Color(red: 0.88, green: 0.94, blue: 1.00),
-                   Color(red: 0.94, green: 0.97, blue: 1.00)],
-            startPoint: .top, endPoint: .bottom)
+        LinearGradient(colors: [.dsBackground, .dsBackground], startPoint: .top, endPoint: .bottom)
     }
 
     var accentBar: LinearGradient {
-        LinearGradient(colors: [Self.blue, Self.sky], startPoint: .top, endPoint: .bottom)
+        LinearGradient(colors: [.dsBrand, .dsBrand], startPoint: .top, endPoint: .bottom)
     }
 
     var buttonFill: LinearGradient {
-        LinearGradient(colors: [Self.blue, Self.sky],
-                       startPoint: .topLeading, endPoint: .bottomTrailing)
+        LinearGradient(colors: [.dsBrand, .dsBrand], startPoint: .leading, endPoint: .trailing)
     }
 }
 
@@ -66,43 +63,18 @@ struct FPHeading: View {
     let palette: FPPalette
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(palette.accentBar)
-                .frame(width: 4, height: 26)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.titleGradient)
-                Text(subtitle)
-                    .font(.system(size: 13))
-                    .foregroundColor(palette.subtitleColor)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        AuthHeading(title: title, subtitle: subtitle)
     }
 }
 
 // MARK: - Field container
 
-/// The rounded, gradient-stroked card that wraps one or more field rows.
+/// The rounded card that wraps one or more field rows.
 struct FPFieldContainer<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(spacing: 0) { content }
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(
-                        LinearGradient(
-                            colors: [FPPalette.blue.opacity(0.20), FPPalette.blue.opacity(0.06)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing),
-                        lineWidth: 1.2)
-            )
-            .shadow(color: FPPalette.blue.opacity(0.08), radius: 10, x: 0, y: 4)
+        DSFieldGroup { content }
     }
 }
 
@@ -112,14 +84,12 @@ struct FPFieldIcon: View {
     let isActive: Bool
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(FPPalette.blue.opacity(isActive ? 0.15 : 0.07))
-                .frame(width: 34, height: 34)
-            Image(systemName: systemName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(isActive ? FPPalette.blue : FPPalette.blue.opacity(0.5))
-        }
+        Image(systemName: systemName)
+            .font(.system(.footnote, weight: .semibold))
+            .foregroundStyle(isActive ? Color.dsBrand : Color.secondary)
+            .frame(width: DS.IconSlot.md, height: DS.IconSlot.md)
+            .background(Circle().fill(Color.dsBrand.opacity(isActive ? 0.14 : 0.07)))
+            .accessibilityHidden(true)
     }
 }
 
@@ -129,9 +99,10 @@ struct FPFieldRowStyle: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, 14)
-            .padding(.vertical, 15)
-            .background(isActive ? FPPalette.blue.opacity(0.05) : Color.clear)
+            .padding(.horizontal, DS.Space.sm)
+            .padding(.vertical, DS.Space.sm + 2)
+            .background(isActive ? Color.dsBrand.opacity(0.06) : Color.clear)
+            .animation(DS.Motion.fade, value: isActive)
     }
 }
 
@@ -146,12 +117,17 @@ struct FPRevealButton: View {
     @Binding var isRevealed: Bool
 
     var body: some View {
-        Button { isRevealed.toggle() } label: {
+        Button {
+            withAnimation(DS.Motion.fade) { isRevealed.toggle() }
+        } label: {
             Image(systemName: isRevealed ? "eye.slash" : "eye")
-                .font(.system(size: 15))
-                .foregroundColor(Color.secondary.opacity(0.5))
+                .font(.system(.footnote))
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(isRevealed ? "Hide password" : "Show password")
     }
 }
 
@@ -163,10 +139,7 @@ struct FPErrorBanner: View {
     var shake: Bool = false
 
     var body: some View {
-        FPBanner(message: message,
-                 systemImage: "exclamationmark.circle.fill",
-                 tint: .red)
-            .offset(x: shake ? -6 : 0)
+        DSCallout(message: message, tone: .danger, shake: shake)
     }
 }
 
@@ -175,43 +148,12 @@ struct FPInfoBanner: View {
     let message: String
 
     var body: some View {
-        FPBanner(message: message,
-                 systemImage: "checkmark.circle.fill",
-                 tint: .green)
-    }
-}
-
-private struct FPBanner: View {
-    let message: String
-    let systemImage: String
-    let tint: Color
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 9) {
-            Image(systemName: systemImage).font(.system(size: 15))
-            Text(message)
-                .font(.system(size: 13, weight: .medium))
-                .fixedSize(horizontal: false, vertical: true)
-                .multilineTextAlignment(.leading)
-            Spacer(minLength: 0)
-        }
-        .foregroundColor(tint)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(tint.opacity(0.07))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(tint.opacity(0.18), lineWidth: 1))
-        )
-        .transition(.scale(scale: 0.97).combined(with: .opacity))
+        DSCallout(message: message, tone: .success)
     }
 }
 
 // MARK: - Primary button
 
-/// The 56pt gradient call-to-action, with the blurred glow it has on the other auth screens.
 struct FPPrimaryButton: View {
     let title: String
     let systemImage: String
@@ -221,43 +163,13 @@ struct FPPrimaryButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            ZStack {
-                if isEnabled && !isLoading {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(
-                            LinearGradient(
-                                colors: [FPPalette.blue.opacity(0.45), FPPalette.sky.opacity(0.3)],
-                                startPoint: .leading, endPoint: .trailing))
-                        .blur(radius: 14)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                }
-
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        isEnabled
-                        ? AnyShapeStyle(palette.buttonFill)
-                        : AnyShapeStyle(Color(.systemFill)))
-                    .frame(height: 56)
-
-                if isLoading {
-                    ProgressView().tint(.white).scaleEffect(0.9)
-                } else {
-                    HStack(spacing: 10) {
-                        Text(title)
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                        Image(systemName: systemImage).font(.system(size: 18))
-                    }
-                    .foregroundColor(isEnabled ? .white : Color.primary.opacity(0.25))
-                }
-            }
-            .frame(height: 56)
-        }
-        .buttonStyle(FPPressStyle())
-        .disabled(!isEnabled || isLoading)
-        .animation(.easeInOut(duration: 0.2), value: isEnabled)
-        .animation(.easeInOut(duration: 0.2), value: isLoading)
+        DSButton(
+            title: title,
+            systemImage: systemImage,
+            role: .primary,
+            isLoading: isLoading,
+            action: action)
+        .disabled(!isEnabled)
     }
 }
 
@@ -265,25 +177,6 @@ struct FPPrimaryButton: View {
 
 struct FPPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.65), value: configuration.isPressed)
-    }
-}
-
-// MARK: - Wave shape
-
-/// Curved bottom edge of the blue header.
-struct FPBottomWave: Shape {
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.move(to: .zero)
-        p.addLine(to: CGPoint(x: rect.width, y: 0))
-        p.addLine(to: CGPoint(x: rect.width, y: rect.height - 30))
-        p.addQuadCurve(
-            to: CGPoint(x: 0, y: rect.height - 30),
-            control: CGPoint(x: rect.width / 2, y: rect.height + 40))
-        p.closeSubpath()
-        return p
+        DSPressStyle().makeBody(configuration: configuration)
     }
 }

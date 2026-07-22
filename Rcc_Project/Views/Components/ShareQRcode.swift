@@ -2,35 +2,40 @@
 //  ShareQRcode.swift
 //  RCC Pay
 //
-//  Created by HRD on 1/6/26.
+//  Share the rendered KHQR image. The label was a hard-coded Khmer literal, so English
+//  users saw Khmer here regardless of their language setting; it now reads from
+//  Localizable.strings like everything else.
 //
 
 import SwiftUI
 
 struct ShareQRcode: View {
+
     var image: UIImage
-    
+
+    @EnvironmentObject private var lm: LocalizationManager
     @State private var isShowingShareSheet = false
-    
+
     var body: some View {
-        Button(action: {
+        Button {
             isShowingShareSheet = true
-        }) {
-            VStack {
-                Circle()
-                    .frame(width: 40)
-                    .foregroundColor(Color(red: 0.206, green: 0.215, blue: 0.22))
-                    .overlay(
-                        Image(systemName: "square.and.arrow.up")
-                            .foregroundColor(.white)
-                    )
-                Text("ផ្ញើរ Qr")
-                    .font(.system(size: 12))
-                    .foregroundColor(.white)
+        } label: {
+            HStack(spacing: DS.Space.xs) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(.subheadline, weight: .semibold))
+                Text(lm["qr_share"])
+                    .font(.dsButton)
             }
+            .foregroundStyle(.white)
+            .padding(.horizontal, DS.Space.lg)
+            .padding(.vertical, DS.Space.sm)
+            .background(Capsule().fill(Color.white.opacity(0.16)))
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.22), lineWidth: 1))
         }
+        .buttonStyle(DSPressStyle(scale: 0.95))
         .sheet(isPresented: $isShowingShareSheet) {
             ActivityView(activityItems: [image])
         }
+        .accessibilityLabel(lm["qr_share"])
     }
 }

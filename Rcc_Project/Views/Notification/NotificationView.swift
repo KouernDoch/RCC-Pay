@@ -2,7 +2,12 @@
 //  NotificationView.swift
 //  RCC Pay
 //
-//  Created by HRD on 1/8/26.
+//  The notification inbox.
+//
+//  Model, loading and the optimistic mark-read / mark-all / delete calls are unchanged.
+//  The presentation gains skeleton loading, a visible error state (`errorMessage` was
+//  set but never rendered), and an unread treatment that leans on a leading accent bar
+//  rather than tinting the whole card — which made unread rows hard to read in dark mode.
 //
 
 import SwiftUI
@@ -26,134 +31,85 @@ struct NotificationModel: Identifiable {
 
 // MARK: - Filter
 
-enum NotifFilter: String, CaseIterable {
+enum NotifFilter: String, CaseIterable, Identifiable {
     case all    = "all"
     case unread = "unread"
+
+    var id: String { rawValue }
 }
 
 // MARK: - Card
 
 struct NotificationCard: View {
+
     let item: NotificationModel
 
-    @EnvironmentObject private var lm: LocalizationManager
-    @Environment(\.colorScheme) private var colorScheme
-    private let mint = Color(red: 0.18, green: 0.75, blue: 0.48)
-
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 0) {
+            // Unread marker: a solid rail on the leading edge. Legible in both schemes,
+            // and it leaves the card's own background alone so the text keeps full contrast.
+            Rectangle()
+                .fill(item.isRead ? Color.clear : Color.dsBrand)
+                .frame(width: 3)
+                .accessibilityHidden(true)
 
-            // Profile photo + unread badge
-            ZStack(alignment: .bottomTrailing) {
-                RemoteAvatarView(urlString: item.profileImage, size: 54, placeholder: item.image)
-                    .overlay(
-                        Circle()
-                            .stroke(Color(.systemGroupedBackground), lineWidth: 2)
-                    )
+            HStack(spacing: DS.Space.sm + 2) {
+                DSAvatar(
+                    urlString: item.profileImage,
+                    size: .md,
+                    placeholder: item.image,
+                    statusTone: item.isRead ? nil : .brand)
 
-                if !item.isRead {
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 13, height: 13)
-                        .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
-                }
-            }
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                    HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
+                        Text(item.userName)
+                            .font(.system(.subheadline, weight: item.isRead ? .medium : .semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
 
-            // Text content
-            VStack(alignment: .leading, spacing: 4) {
+                        Spacer(minLength: 0)
 
-                // Title + optional amount
-                HStack(alignment: .firstTextBaseline) {
-                    Text(item.userName)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-                    Spacer()
-                    if !item.amount.isEmpty {
-                        Text("$\(item.amount)")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(mint)
+                        if !item.amount.isEmpty {
+                            DSAmountPill(amount: item.amount)
+                        }
+                    }
+
+                    Text(item.payMonth)
+                        .font(.dsSubtext)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: DS.Space.xxs) {
+                        Image(systemName: "clock")
+                            .font(.system(.caption2))
+                            .foregroundStyle(.tertiary)
+                        Text(item.transactionDate)
+                            .font(.dsCaption)
+                            .foregroundStyle(.secondary)
                     }
                 }
-
-                // Message body
-                Text(item.payMonth)
-                    .font(.system(size: 13))
-                    .foregroundColor(item.isRead ? .secondary : .blue)
-                    .lineLimit(2)
-
-                // Transaction date
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
-                    Text(item.transactionDate)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.top, 1)
             }
+            .padding(.horizontal, DS.Space.sm + 2)
+            .padding(.vertical, DS.Space.sm + 2)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(item.isRead
-                      ? Color(.systemBackground)
-                      : Color(.systemBlue).opacity(colorScheme == .dark ? 0.15 : 0.06))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(
-                    item.isRead
-                        ? (colorScheme == .dark ? Color.white.opacity(0.08) : Color.clear)
-                        : Color.blue.opacity(colorScheme == .dark ? 0.4 : 0.15),
-                    lineWidth: 1
-                )
-        )
-        .shadow(
-            color: colorScheme == .dark ? .clear : (item.isRead ? Color.black.opacity(0.05) : Color.blue.opacity(0.1)),
-            radius: item.isRead ? 6 : 12, x: 0, y: item.isRead ? 2 : 5
-        )
+        .dsSurface(radius: DS.Radius.md, elevation: .low)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.isRead ? "" : "Unread. ")\(item.userName). \(item.payMonth). \(item.transactionDate)")
     }
 }
 
-// MARK: - Empty State
-
-struct NotifEmptyState: View {
-    @EnvironmentObject private var lm: LocalizationManager
-
-    var body: some View {
-        VStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.07))
-                    .frame(width: 86, height: 86)
-                Image(systemName: "bell.slash.fill")
-                    .font(.system(size: 32))
-                    .foregroundColor(Color.blue.opacity(0.3))
-            }
-            Text(lm["no_notifications"])
-                .font(.system(size: 17, weight: .semibold))
-            Text(lm["all_caught_up"])
-                .font(.system(size: 13))
-                .foregroundColor(.gray)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 80)
-    }
-}
-
-// MARK: - Main View
+// MARK: - Main view
 
 struct NotificationView: View {
 
     @EnvironmentObject private var lm: LocalizationManager
-    @Environment(\.colorScheme) private var colorScheme
+
     @State private var filter: NotifFilter = .all
     @State private var notifications: [NotificationModel] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var hasLoadedOnce = false
 
     private var unreadCount: Int { notifications.filter { !$0.isRead }.count }
 
@@ -161,138 +117,157 @@ struct NotificationView: View {
         filter == .unread ? notifications.filter { !$0.isRead } : notifications
     }
 
+    private var isInitialLoad: Bool { isLoading && !hasLoadedOnce }
+
     // MARK: Body
 
     var body: some View {
         ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.dsBackground.ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
-                headerView
-                filterBar.padding(.bottom, 8)
+            VStack(alignment: .leading, spacing: DS.Space.sm) {
+                header
+                filterBar
 
-                List {
-                    if isLoading && notifications.isEmpty {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 60)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                    } else if displayed.isEmpty {
-                        NotifEmptyState()
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets())
-                    } else {
-                        ForEach(displayed) { item in
-                            cardRow(item)
-                        }
+                if let errorMessage, notifications.isEmpty {
+                    DSErrorState(message: errorMessage) {
+                        Task { await load() }
                     }
+                    Spacer()
+                } else {
+                    list
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .refreshable { await load() }
-                .animation(.easeInOut(duration: 0.25), value: notifications.map { $0.isRead })
-                .animation(.easeInOut(duration: 0.25), value: notifications.count)
             }
+            .padding(.top, DS.Space.xs)
         }
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(false)
         .toolbarBackground(.hidden, for: .navigationBar)
         .task { await load() }
     }
 
     // MARK: - Header
 
-    private var headerView: some View {
-        HStack {
-            Text(lm["notifications"])
-                .font(.system(size: 24, weight: .bold))
-            Spacer()
+    private var header: some View {
+        DSScreenTitle(
+            title: lm["notifications"],
+            subtitle: unreadCount > 0 ? "\(unreadCount) \(lm["unread"].lowercased())" : nil
+        ) {
             if unreadCount > 0 {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.25)) { markAllRead() }
+                    withAnimation(DS.Motion.smooth) { markAllRead() }
                 } label: {
                     Text(lm["mark_all_read"])
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.blue)
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(Color.dsBrand)
                 }
             }
         }
-        .padding(.horizontal)
-        .padding(.top, 8)
-        .padding(.bottom, 14)
+        .padding(.horizontal, DS.Space.page)
     }
 
-    // MARK: - Filter Bar
+    // MARK: - Filter
 
     private var filterBar: some View {
-        HStack(spacing: 10) {
-            ForEach(NotifFilter.allCases, id: \.self) { tab in
-                Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.72)) {
-                        filter = tab
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(lm[tab.rawValue])
-                            .font(.system(size: 14,
-                                          weight: filter == tab ? .semibold : .regular))
-                        if tab == .unread, unreadCount > 0 {
-                            Text("\(unreadCount)")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(filter == tab ? .blue : .white)
-                                .frame(minWidth: 20, minHeight: 20)
-                                .background(Capsule()
-                                    .fill(filter == tab ? Color.white : Color.red))
-                        }
-                    }
-                    .foregroundColor(filter == tab ? .white : .gray)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 9)
-                    .background(
-                        Capsule()
-                            .fill(filter == tab ? Color.blue : Color(.systemBackground))
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(filter == tab ? Color.clear : Color.primary.opacity(0.1), lineWidth: 1)
-                    )
-                    .shadow(color: colorScheme == .dark ? .clear : Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
+        HStack(spacing: DS.Space.xs) {
+            ForEach(NotifFilter.allCases) { tab in
+                DSFilterChip(
+                    title: lm[tab.rawValue],
+                    isSelected: filter == tab,
+                    count: tab == .unread ? unreadCount : nil
+                ) {
+                    withAnimation(DS.Motion.quick) { filter = tab }
                 }
             }
             Spacer()
         }
-        .padding(.horizontal)
+        .padding(.horizontal, DS.Space.page)
     }
 
-    // MARK: - Row Builder
+    // MARK: - List
+
+    private var list: some View {
+        List {
+            if isInitialLoad {
+                DSSkeletonList(count: 5)
+                    .padding(.horizontal, DS.Space.page)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+            } else if displayed.isEmpty {
+                DSEmptyState(
+                    title: lm["no_notifications"],
+                    message: lm["all_caught_up"],
+                    systemImage: "bell.slash.fill",
+                    tone: .brand)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets())
+            } else {
+                // A failed refresh shouldn't discard rows we already have — surface it
+                // above them instead.
+                if let errorMessage {
+                    DSInlineError(message: errorMessage) {
+                        Task { await load() }
+                    }
+                    .padding(.horizontal, DS.Space.page)
+                    .padding(.bottom, DS.Space.xs)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+                }
+
+                ForEach(displayed) { item in
+                    cardRow(item)
+                }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .refreshable { await load() }
+        .animation(DS.Motion.smooth, value: notifications.map(\.isRead))
+        .animation(DS.Motion.smooth, value: notifications.count)
+        .animation(DS.Motion.smooth, value: filter)
+    }
 
     @ViewBuilder
     private func cardRow(_ item: NotificationModel) -> some View {
         NotificationCard(item: item)
-            .padding(.horizontal)
-            .padding(.vertical, 5)
+            .padding(.horizontal, DS.Space.page)
+            .padding(.vertical, DS.Space.xxs)
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets())
             .contentShape(Rectangle())
             .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.25)) { markAsRead(item) }
+                withAnimation(DS.Motion.smooth) { markAsRead(item) }
             }
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button(role: .destructive) {
-                    withAnimation { deleteNotif(item) }
+                    withAnimation(DS.Motion.smooth) { deleteNotif(item) }
                 } label: {
                     Label(lm["delete"], systemImage: "trash")
                 }
                 if !item.isRead {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.25)) { markAsRead(item) }
+                        withAnimation(DS.Motion.smooth) { markAsRead(item) }
                     } label: {
                         Label(lm["mark_read"], systemImage: "checkmark.circle.fill")
                     }
-                    .tint(.blue)
+                    .tint(Color.dsBrand)
+                }
+            }
+            .contextMenu {
+                if !item.isRead {
+                    Button {
+                        withAnimation(DS.Motion.smooth) { markAsRead(item) }
+                    } label: {
+                        Label(lm["mark_read"], systemImage: "checkmark.circle")
+                    }
+                }
+                Button(role: .destructive) {
+                    withAnimation(DS.Motion.smooth) { deleteNotif(item) }
+                } label: {
+                    Label(lm["delete"], systemImage: "trash")
                 }
             }
     }
@@ -342,6 +317,7 @@ struct NotificationView: View {
             errorMessage = (error as? APIError)?.errorDescription ?? "Failed to load notifications."
         }
         isLoading = false
+        hasLoadedOnce = true
     }
 }
 

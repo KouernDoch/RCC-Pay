@@ -223,3 +223,10 @@
 "use_remaining_amount"         = "Use remaining amount";
 "cancel"                       = "Cancel";
 "confirm"                      = "Confirm";
+
+/* QR payment sheet */
+"qr_title"             = "QR Code";
+"qr_instruction"       = "Use this QR code to pay for your accommodation and meals at RCC.";
+"qr_share"             = "Share QR";
+"qr_amount_due"        = "Amount due";
+"qr_close"             = "Close";

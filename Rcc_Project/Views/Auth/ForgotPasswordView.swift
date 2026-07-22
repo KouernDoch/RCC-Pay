@@ -9,6 +9,10 @@
 //
 //  Flow: Login → Email → OTP → New password → Success → Login
 //
+//  The ViewModel contract is untouched: same `goBack`, same `stopCountdown` on
+//  disappear, same shake driven off `errorNonce`. Only the chrome changed — it now
+//  comes from `AuthScaffold`, shared with Login and Sign Up.
+//
 
 import SwiftUI
 
@@ -27,36 +31,22 @@ struct ForgotPasswordView: View {
     /// confirm it. Fires when the user leaves the success step.
     var onPasswordReset: () -> Void = {}
 
-    @State private var appeared = false
     @State private var shake = false
 
-    private let screenH = UIScreen.main.bounds.height
     private var palette: FPPalette { FPPalette(scheme) }
 
     // MARK: - Body
 
     var body: some View {
-        ZStack(alignment: .top) {
-            palette.pageBackground.ignoresSafeArea()
-
-            headerView.ignoresSafeArea(edges: .top)
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    Color.clear.frame(height: screenH * 0.36)
-                    formCard.padding(.top, -52)
-                }
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .ignoresSafeArea(edges: .top)
-
-            topBar
-        }
+        AuthScaffold(
+            systemImage: headerIcon,
+            title: nil,
+            subtitle: nil,
+            isCompact: true,
+            accessory: { topBar },
+            content: { stepContent })
         .navigationBarHidden(true)
-        .onAppear {
-            vm.prefill(email: prefilledEmail)
-            withAnimation(.easeOut(duration: 0.6).delay(0.1)) { appeared = true }
-        }
+        .onAppear { vm.prefill(email: prefilledEmail) }
         // The countdown is a live Task; without this it keeps ticking after the user leaves.
         .onDisappear { vm.stopCountdown() }
         // Shake is presentation-only, so it's driven here rather than from the ViewModel.
@@ -69,82 +59,20 @@ struct ForgotPasswordView: View {
     private var topBar: some View {
         HStack {
             if vm.step != .success {
-                Button {
+                AuthBackButton(title: lm["back"]) {
                     // The ViewModel decides whether there's a step to fall back to;
                     // `false` means we're at the start of the flow, so leave it.
                     if !vm.goBack() { dismiss() }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text(lm["back"])
-                            .font(.system(size: 14, weight: .semibold))
-                    }
-                    .foregroundColor(.white.opacity(0.85))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Color.white.opacity(0.15)))
                 }
             }
 
             Spacer()
 
             if vm.step != .success {
-                HStack(spacing: 6) {
-                    ForEach(1...3, id: \.self) { index in
-                        Capsule()
-                            .fill(Color.white.opacity(vm.step.rawValue >= index ? 1.0 : 0.3))
-                            .frame(width: vm.step.rawValue == index ? 22 : 8, height: 8)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: vm.step)
-                    }
-                }
-                .padding(.trailing, 4)
+                AuthStepPills(current: vm.step.rawValue, total: 3)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .animation(.easeInOut(duration: 0.25), value: vm.step)
-    }
-
-    // MARK: - Header
-
-    private var headerView: some View {
-        ZStack {
-            FPBottomWave()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.10, green: 0.30, blue: 0.88),
-                            Color(red: 0.22, green: 0.52, blue: 1.00),
-                            FPPalette.sky,
-                        ],
-                        startPoint: .topLeading, endPoint: .bottomTrailing))
-
-            Circle()
-                .fill(Color.white.opacity(0.07))
-                .frame(width: 220)
-                .offset(x: 90, y: -screenH * 0.36 * 0.22)
-            Circle()
-                .fill(Color.white.opacity(0.05))
-                .frame(width: 150)
-                .offset(x: -100, y: screenH * 0.36 * 0.05)
-
-            VStack(spacing: 16) {
-                ZStack {
-                    Circle().fill(Color.white.opacity(0.15)).frame(width: 76)
-                    Circle().fill(Color.white.opacity(0.22)).frame(width: 58)
-                    Image(systemName: headerIcon)
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 6)
-                .scaleEffect(appeared ? 1 : 0.6)
-                .opacity(appeared ? 1 : 0)
-            }
-            .padding(.bottom, 44)
-        }
-        .frame(height: screenH * 0.36, alignment: .top)
+        .animation(DS.Motion.fade, value: vm.step)
     }
 
     private var headerIcon: String {
@@ -156,47 +84,7 @@ struct ForgotPasswordView: View {
         }
     }
 
-    // MARK: - Card
-
-    private var formCard: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 32).fill(Color(.systemBackground))
-            RoundedRectangle(cornerRadius: 32)
-                .fill(
-                    LinearGradient(
-                        colors: [FPPalette.blue.opacity(palette.isDark ? 0.20 : 0.08),
-                                 FPPalette.blue.opacity(palette.isDark ? 0.06 : 0.02),
-                                 Color.clear],
-                        startPoint: .top, endPoint: .center))
-
-            Circle()
-                .fill(FPPalette.blue.opacity(0.05))
-                .frame(width: 200)
-                .offset(x: 80, y: -50)
-                .blur(radius: 2)
-            Circle()
-                .fill(FPPalette.sky.opacity(0.05))
-                .frame(width: 110)
-                .offset(x: -50, y: 90)
-
-            stepContent
-                .padding(.horizontal, 26)
-                .padding(.top, 32)
-                .padding(.bottom, 44)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 32))
-        .overlay(
-            RoundedRectangle(cornerRadius: 32)
-                .stroke(
-                    LinearGradient(
-                        colors: [FPPalette.blue.opacity(0.22), FPPalette.blue.opacity(0.05)],
-                        startPoint: .top, endPoint: .bottom),
-                    lineWidth: 1)
-        )
-        .shadow(color: FPPalette.blue.opacity(0.16), radius: 20, x: 0, y: -10)
-        .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 6)
-        .padding(.horizontal, 12)
-    }
+    // MARK: - Step content
 
     @ViewBuilder
     private var stepContent: some View {
@@ -220,7 +108,7 @@ struct ForgotPasswordView: View {
             .asymmetric(
                 insertion: .move(edge: .trailing).combined(with: .opacity),
                 removal:   .move(edge: .leading).combined(with: .opacity)))
-        .animation(.spring(response: 0.45, dampingFraction: 0.82), value: vm.step)
+        .animation(DS.Motion.smooth, value: vm.step)
     }
 
     // MARK: - Helpers

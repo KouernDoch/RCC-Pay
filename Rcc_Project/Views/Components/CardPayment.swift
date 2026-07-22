@@ -2,7 +2,8 @@
 //  CardPayment.swift
 //  Rcc_Project
 //
-//  Created by HRD on 12/31/25.
+//  A single row in the payment feed. Now a thin composition over `DSPersonCard`, so it
+//  picks up the shared avatar, surface and amount-pill treatment automatically.
 //
 
 import SwiftUI
@@ -13,6 +14,7 @@ struct Item: Identifiable {
 }
 
 struct CardPayment: View {
+
     var name   = "Leng Chinmony"
     /// Placeholder asset, used when `profileImage` is nil or fails to load.
     var image  = "Profile"
@@ -20,55 +22,34 @@ struct CardPayment: View {
     var profileImage: String? = nil
     var date   = "01 Jan, 2026"
     var amount = "38.00"
-
-    @Environment(\.colorScheme) private var colorScheme
-    private let mint = Color(red: 0.18, green: 0.75, blue: 0.48)
+    /// Colours the amount pill. Payments read as settled money by default; the admin
+    /// unpaid list passes `.warning` so the same row can carry the opposite meaning.
+    var tone: DSTone = .success
 
     var body: some View {
-        HStack(spacing: 12) {
-
-            // Profile image
-            RemoteAvatarView(urlString: profileImage, size: 44, placeholder: image)
-                .overlay(Circle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
-
-            // Name + date
-            VStack(alignment: .leading, spacing: 3) {
-                Text(name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
-                Text(date)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
-
-            // Amount
-            Text("$\(amount)")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(mint)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(mint.opacity(colorScheme == .dark ? 0.18 : 0.1)))
+        DSPersonCard(
+            name: name,
+            subtitle: date,
+            imageURL: profileImage,
+            placeholder: image
+        ) {
+            DSAmountPill(amount: amount, tone: tone)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.clear, lineWidth: 1)
-        )
-        .shadow(color: colorScheme == .dark ? .clear : Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
-        .padding(.horizontal)
+        .padding(.horizontal, DS.Space.page)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(name), \(date), $\(amount)")
     }
 }
 
+// MARK: - Preview
+
 #Preview {
-    VStack(spacing: 12) {
+    VStack(spacing: DS.Space.xs) {
         CardPayment()
         CardPayment(name: "Kouern Doch", date: "15 Mar, 2026", amount: "45.00")
+        CardPayment(name: "Phan Sopheak", date: "Unpaid · March 2026", amount: "38.00", tone: .warning)
     }
     .padding(.vertical)
-    .background(Color(.systemGroupedBackground))
+    .frame(maxHeight: .infinity, alignment: .top)
+    .background(Color.dsBackground)
 }

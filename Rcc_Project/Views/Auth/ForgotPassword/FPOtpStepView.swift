@@ -4,6 +4,10 @@
 //
 //  Step 2 of 3 — enter the 6-digit code, watch it expire, resend when it does.
 //
+//  Behaviour is unchanged: auto-submit at six digits, the same guard against stacking
+//  on an in-flight request, the same countdown/resend swap. Only the styling moved onto
+//  design-system tokens.
+//
 
 import SwiftUI
 
@@ -17,29 +21,28 @@ struct FPOtpStepView: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: DS.Space.lg) {
             FPHeading(title: lm["fp_otp_title"],
                       subtitle: lm["fp_otp_subtitle"],
                       palette: palette)
 
             // The address the code went to — the whole point of showing it is to let the
             // user catch a typo without going back a step first.
-            HStack(spacing: 8) {
+            HStack(spacing: DS.Space.xs) {
                 Image(systemName: "envelope.badge.fill")
-                    .font(.system(size: 13))
-                    .foregroundColor(FPPalette.blue.opacity(0.7))
+                    .font(.system(.footnote))
+                    .foregroundStyle(Color.dsBrand.opacity(0.7))
                 Text(vm.normalizedEmail)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(palette.linkColor)
+                    .font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(Color.dsBrand)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(FPPalette.blue.opacity(0.06)))
+            .padding(.horizontal, DS.Space.sm)
+            .padding(.vertical, DS.Space.xs + 2)
+            .dsAccentSurface(.dsBrand, radius: DS.Radius.sm, intensity: 0.07)
+            .accessibilityElement(children: .combine)
 
             FPOtpEntryField(code: $vm.otp, isFocused: $isFocused)
 
@@ -60,8 +63,8 @@ struct FPOtpStepView: View {
                 palette: palette,
                 action: submit)
         }
-        .animation(.easeInOut(duration: 0.25), value: vm.errorMessage)
-        .animation(.easeInOut(duration: 0.25), value: vm.infoMessage)
+        .animation(DS.Motion.fade, value: vm.errorMessage)
+        .animation(DS.Motion.fade, value: vm.infoMessage)
         .onAppear { isFocused = true }
         .onChange(of: vm.otp) { _, code in
             // Six digits is unambiguous — submit rather than making the user reach for
@@ -73,44 +76,44 @@ struct FPOtpStepView: View {
     // MARK: - Countdown / resend
 
     private var countdownRow: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: DS.Space.xxs + 2) {
             if vm.canResend {
                 Text(lm["fp_code_expired_hint"])
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .font(.dsCaption)
+                    .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
                 Button {
                     isFocused = false
                     Task { await vm.resendOtp() }
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: DS.Space.xxs + 1) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(.caption, weight: .semibold))
                         Text(lm["fp_resend_code"])
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(.footnote, weight: .bold))
                     }
-                    .foregroundColor(palette.linkColor)
+                    .foregroundStyle(Color.dsBrand)
                 }
                 .buttonStyle(.plain)
                 .disabled(vm.isLoading)
             } else {
                 Image(systemName: "clock")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .font(.system(.caption))
+                    .foregroundStyle(.secondary)
                 Text(lm["fp_code_expires_in"])
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .font(.dsCaption)
+                    .foregroundStyle(.secondary)
                 Text(vm.countdownText)
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .foregroundColor(vm.secondsRemaining <= 10 ? .orange : palette.linkColor)
+                    .font(.system(.footnote, design: .monospaced, weight: .bold))
+                    .foregroundStyle(vm.secondsRemaining <= 10 ? Color.dsWarning : Color.dsBrand)
                 Spacer(minLength: 0)
                 // Kept visible but inert so the control doesn't pop into existence at 0:00.
                 Text(lm["fp_resend_code"])
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary.opacity(0.4))
+                    .font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(.tertiary)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: vm.canResend)
+        .animation(DS.Motion.fade, value: vm.canResend)
     }
 
     private func submit() {
@@ -136,13 +139,12 @@ struct FPOtpEntryField: View {
                 .focused(isFocused)
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
-                .foregroundColor(.clear)
+                .foregroundStyle(.clear)
                 .tint(.clear)
-                .accentColor(.clear)
                 // Must stay non-zero: a fully transparent field stops receiving input.
                 .opacity(0.02)
 
-            HStack(spacing: 9) {
+            HStack(spacing: DS.Space.xs) {
                 ForEach(0..<slots, id: \.self) { index in
                     slot(at: index)
                 }
@@ -151,6 +153,8 @@ struct FPOtpEntryField: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { isFocused.wrappedValue = true }
+        // Six separate boxes would be announced as six empty fields; this presents the
+        // code as the single value it actually is.
         .accessibilityElement()
         .accessibilityLabel(Text("Verification code"))
         .accessibilityValue(Text(code.isEmpty ? "empty" : code.map(String.init).joined(separator: " ")))
@@ -163,23 +167,23 @@ struct FPOtpEntryField: View {
         let isCursor = isFocused.wrappedValue && index == min(digits.count, slots - 1)
         let isFilled = !digit.isEmpty
 
-        return RoundedRectangle(cornerRadius: 14)
-            .fill(isFilled ? FPPalette.blue.opacity(0.08) : Color(.systemBackground))
-            .frame(height: 56)
+        return RoundedRectangle(cornerRadius: DS.Radius.sm, style: .continuous)
+            .fill(isFilled ? Color.dsBrand.opacity(0.08) : Color.dsSurfaceSunken)
+            .frame(height: 54)
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(
-                        isCursor ? FPPalette.blue
-                                 : FPPalette.blue.opacity(isFilled ? 0.35 : 0.15),
-                        lineWidth: isCursor ? 2 : 1.2)
+                RoundedRectangle(cornerRadius: DS.Radius.sm, style: .continuous)
+                    .strokeBorder(
+                        isCursor ? Color.dsBrand
+                                 : (isFilled ? Color.dsBrand.opacity(0.35) : Color.dsHairline),
+                        lineWidth: isCursor ? 2 : 1)
             )
             .overlay(
                 Text(digit)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(FPPalette.blue)
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .foregroundStyle(Color.dsBrand)
+                    .contentTransition(.numericText())
             )
-            .shadow(color: FPPalette.blue.opacity(isFilled ? 0.12 : 0.05), radius: 6, x: 0, y: 3)
-            .animation(.spring(response: 0.28, dampingFraction: 0.7), value: isFilled)
-            .animation(.easeInOut(duration: 0.15), value: isCursor)
+            .animation(DS.Motion.quick, value: isFilled)
+            .animation(DS.Motion.fade, value: isCursor)
     }
 }
